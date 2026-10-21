@@ -13,7 +13,7 @@ fi
 
 echo "DATABASE_URL is configured."
 
-./node_modules/.bin/prisma db push --accept-data-loss
+node ./node_modules/prisma/build/index.js db push --accept-data-loss
 
 echo "======================================"
 echo "Database synchronization completed."

@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1
 
-# ---- base ----
+# =========================
+# BASE
+# =========================
 FROM node:22-slim AS base
 
 RUN apt-get update -y \
@@ -18,7 +20,9 @@ ENV UV_THREADPOOL_SIZE=1
 ENV CARGO_BUILD_JOBS=1
 
 
-# ---- deps ----
+# =========================
+# DEPENDENCIES
+# =========================
 FROM base AS deps
 
 WORKDIR /app
@@ -29,7 +33,9 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --prefer-offline
 
 
-# ---- builder ----
+# =========================
+# BUILDER
+# =========================
 FROM base AS builder
 
 WORKDIR /app
@@ -43,7 +49,9 @@ RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholde
 RUN pnpm build
 
 
-# ---- runner ----
+# =========================
+# RUNNER
+# =========================
 FROM node:22-slim AS runner
 
 WORKDIR /app
@@ -60,25 +68,28 @@ RUN apt-get update -y \
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
-# Copy the standalone Next.js application
+
+# Next.js standalone application
 COPY --from=builder /app/.next/standalone ./
 
-# Copy Next static files
+# Next.js static assets
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy Prisma files
+# Prisma schema
 COPY --from=builder /app/prisma ./prisma
 
-# Copy Prisma CLI and required packages
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+# Prisma CLI
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
-# Create startup script
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+# Prisma generated client/runtime
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-RUN chown -R nextjs:nodejs /app /docker-entrypoint.sh
+# Startup script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+
+RUN chmod +x /docker-entrypoint.sh \
+    && chown -R nextjs:nodejs /app \
+    && chown nextjs:nodejs /docker-entrypoint.sh
 
 USER nextjs
 
