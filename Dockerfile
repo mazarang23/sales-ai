@@ -34,6 +34,7 @@ ENV HOSTNAME=0.0.0.0
 
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
+# کپی کل پروژه (بدون standalone)
 COPY --from=builder --chown=nextjs:nodejs /app ./
 
 USER nextjs
