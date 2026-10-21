@@ -14,10 +14,14 @@ RUN corepack enable
 ENV PNPM_HOME="/root/.local/share/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
+# Extremely low-resource build environment
 ENV NEXT_WORKER_THREADS=1
+ENV NEXT_PRIVATE_BUILD_WORKER=1
 ENV RAYON_NUM_THREADS=1
 ENV UV_THREADPOOL_SIZE=1
 ENV CARGO_BUILD_JOBS=1
+ENV CARGO_BUILD_PIPELINING=false
+ENV MAKEFLAGS="-j1"
 
 
 # =========================
@@ -43,10 +47,14 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Prisma client generation
 RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" \
     pnpm prisma generate
 
-RUN pnpm build
+# Build with minimal concurrency
+RUN NODE_OPTIONS="--max-old-space-size=1024" \
+    DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" \
+    pnpm build
 
 
 # =========================
@@ -82,16 +90,10 @@ COPY --from=builder /app/.next/static ./.next/static
 # PRISMA
 # =========================
 
-# Copy the complete node_modules from dependencies stage.
-# This includes:
-# - prisma
-# - @prisma/client
-# - @prisma/engines
-# - Prisma engines
-# - Prisma dependencies
+# Full node_modules is intentional:
+# Prisma CLI needs @prisma/engines and related dependencies.
 COPY --from=deps /app/node_modules ./node_modules
 
-# Prisma schema
 COPY --from=builder /app/prisma ./prisma
 
 

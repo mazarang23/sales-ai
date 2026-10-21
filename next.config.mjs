@@ -9,7 +9,6 @@ const nextConfig = {
     webpackBuildWorker: false,
   },
 
-  // Limit Next.js build concurrency for Darakub's constrained environment
   cpus: 1,
 
   eslint: {
