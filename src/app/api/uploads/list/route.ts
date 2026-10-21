@@ -12,7 +12,12 @@ export async function GET() {
     where: { userId: user.id, status: "READY" },
     orderBy: { createdAt: "desc" },
     take: 50,
-    select: { id: true, fileName: true, rowCount: true, createdAt: true }
+    select: {
+      id: true,
+      fileName: true,
+      rowCount: true,
+      createdAt: true
+    }
   });
 
   return NextResponse.json({ uploads });

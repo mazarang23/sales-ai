@@ -96,9 +96,7 @@ export default async function BookingPage({
             وضعیت پرداخت:{" "}
             <span
               className={`font-medium ${
-                booking.paymentStatus === "paid"
-                  ? "text-emerald-700"
-                  : "text-slate-600"
+                booking.paymentStatus === "paid" ? "text-emerald-700" : "text-slate-600"
               }`}
             >
               {payMap[booking.paymentStatus]}
@@ -119,6 +117,7 @@ export default async function BookingPage({
           <ChatBox
             bookingId={booking.id}
             mySenderId={user.id}
+            role="user"
             disabled={booking.paymentStatus !== "paid"}
           />
         )}

@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { computeKpis } from "@/lib/analytics/kpi";
 import { explainAction } from "@/lib/ai/growth-agent";
-import { getModelForPlan } from "@/lib/ai-model";
+import { getModelForPlan, getExplainLimit } from "@/lib/plans";
 
 export const maxDuration = 90;
 
@@ -14,10 +14,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    // بررسی سقف سوالات (هم برای assistant و هم explain)
-    if (user.plan === "free" && user.aiQuestionsUsed >= user.aiQuestionsLimit) {
+    const explainLimit = getExplainLimit(user.plan);
+    if (user.plan === "free" && user.aiQuestionsUsed >= explainLimit) {
       return NextResponse.json(
-        { error: "LIMIT_REACHED", message: "سقف سوالات پلن شما پر شده. برای ادامه، پلن خود را ارتقا دهید." },
+        {
+          error: "LIMIT_REACHED",
+          message: `سقف توضیح بیشتر پلن شما (${explainLimit} در ماه) پر شده. برای ادامه، پلن خود را ارتقا دهید.`
+        },
         { status: 403 }
       );
     }
@@ -27,12 +30,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "اطلاعات ناقص است" }, { status: 400 });
     }
 
-    const upload = await db.upload.findFirst({
-      where: { id: uploadId, userId: user.id }
-    });
-    if (!upload) {
-      return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-    }
+    const upload = await db.upload.findFirst({ where: { id: uploadId, userId: user.id } });
+    if (!upload) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
     const rows = await db.dataRow.findMany({ where: { uploadId } });
     const kpis = computeKpis(rows as any);
@@ -53,7 +52,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // افزایش شمارنده
     await db.user.update({
       where: { id: user.id },
       data: { aiQuestionsUsed: { increment: 1 } }
@@ -69,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       explanation: result.explanation,
-      remaining: Math.max(0, user.aiQuestionsLimit - user.aiQuestionsUsed - 1)
+      remaining: Math.max(0, explainLimit - user.aiQuestionsUsed - 1)
     });
   } catch (e: any) {
     console.error("explain error:", e?.status, e?.message);

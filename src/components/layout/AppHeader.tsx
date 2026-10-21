@@ -3,8 +3,20 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { NotificationBell } from "@/components/app/NotificationBell";
 
-type User = { id: string; phone: string; name: string | null; role: string; plan: string };
+type User = {
+  id: string;
+  phone: string;
+  name: string | null;
+  role: string;
+  plan: string;
+};
 type Consultant = { id: string; status: string; displayName: string } | null;
+
+const PLAN_LABELS: Record<string, string> = {
+  free: "رایگان",
+  pro: "رشد",
+  business: "حرفه‌ای"
+};
 
 export function AppHeader() {
   const [user, setUser] = useState<User | null>(null);
@@ -32,6 +44,11 @@ export function AppHeader() {
             <span className="text-slate-400">...</span>
           ) : user ? (
             <>
+              {user.plan !== "free" && (
+                <span className="hidden sm:inline-flex rounded-lg bg-emerald-50 text-emerald-700 px-2 py-1 text-xs">
+                  پلن {PLAN_LABELS[user.plan] || user.plan}
+                </span>
+              )}
               <Link href="/dashboard" className="text-slate-600 hover:text-brand-600">داشبورد</Link>
               <Link href="/bookings" className="text-slate-600 hover:text-brand-600">جلسات</Link>
               <Link href="/account" className="text-slate-600 hover:text-brand-600 font-medium">حساب من</Link>

@@ -1,0 +1,17 @@
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.local
+.env.production
+.storage
+*.log
+README.md
+.DS_Store
+.vscode
+.idea
+out
+build
+dist
+coverage

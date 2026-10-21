@@ -127,7 +127,10 @@ export default async function CustomersPage({
                 <tr key={c.name} className="border-t border-slate-100">
                   <td className="px-3 py-2">{c.name}</td>
                   <td className="px-3 py-2">
-                    <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs">
+                    <span
+                      className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs cursor-help"
+                      title={c.segmentReason}
+                    >
                       {c.segment}
                     </span>
                   </td>

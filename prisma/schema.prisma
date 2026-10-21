@@ -20,6 +20,8 @@ model User {
   aiQuestionsUsed  Int            @default(0)
   aiQuestionsLimit Int            @default(1)
   feedbackGiven    Boolean        @default(false)
+  otpCode          String?
+  otpExpiresAt     DateTime?
   lastSeenAt       DateTime?
   createdAt        DateTime       @default(now())
   uploads          Upload[]
@@ -239,4 +241,19 @@ model Review {
   comment   String?
   createdAt DateTime @default(now())
   booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model Ticket {
+  id        String   @id @default(cuid())
+  userId    String
+  phone     String
+  type      String   // "report" | "feedback"
+  message   String
+  rating    Int?
+  uploadId  String?
+  status    String   @default("open")
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
 }

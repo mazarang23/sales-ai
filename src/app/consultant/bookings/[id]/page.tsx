@@ -37,9 +37,6 @@ export default async function ConsultantBookingPage({
   };
 
   const canChat = booking.paymentStatus === "paid";
-  const canViewAnalysis =
-    booking.paymentStatus === "paid" &&
-    (booking.status === "accepted" || booking.status === "completed");
 
   return (
     <div className="container-tight py-10 max-w-2xl space-y-6" dir="rtl">
@@ -57,28 +54,21 @@ export default async function ConsultantBookingPage({
       </div>
 
       <div className="card p-4 flex items-center justify-between flex-wrap gap-2 text-sm">
-        <div>وضعیت: <span className="font-medium">{statusMap[booking.status]}</span></div>
-        <div>پرداخت: <span className="font-medium">{payMap[booking.paymentStatus]}</span></div>
+        <div>
+          وضعیت: <span className="font-medium">{statusMap[booking.status]}</span>
+        </div>
+        <div>
+          پرداخت: <span className="font-medium">{payMap[booking.paymentStatus]}</span>
+        </div>
         <BookingActions bookingId={booking.id} status={booking.status} />
       </div>
 
-      {canViewAnalysis && (
-        <Link
-          href={`/consultant/bookings/${booking.id}/analysis`}
-          className="btn-primary w-full text-center py-3"
-        >
-          مشاهده تحلیل فروشگاه مشتری
-        </Link>
-      )}
-
-      {!canViewAnalysis && booking.paymentStatus === "paid" && (
-        <div className="rounded-xl bg-amber-50 text-amber-800 p-3 text-sm">
-          دسترسی به تحلیل بعد از تایید جلسه (accepted) فعال می‌شود.
-        </div>
-      )}
-
       {canChat ? (
-        <ChatBox bookingId={booking.id} mySenderId={consultant.id} />
+        <ChatBox
+          bookingId={booking.id}
+          mySenderId={consultant.id}
+          role="consultant"
+        />
       ) : (
         <div className="rounded-xl bg-amber-50 text-amber-800 p-3 text-sm">
           چت بعد از تایید پرداخت توسط ادمین فعال می‌شود.

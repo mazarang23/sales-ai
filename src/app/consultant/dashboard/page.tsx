@@ -1,7 +1,7 @@
 import { getCurrentConsultant } from "@/lib/consultant-auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { formatDate } from "@/lib/utils";
+import { formatIRR, formatNum, formatDate } from "@/lib/utils";
 import { ConsultantPhotoSection } from "@/components/consultant/ConsultantPhotoSection";
 import { BookingActions } from "@/components/consultant/BookingActions";
 import Link from "next/link";
@@ -12,12 +12,27 @@ export default async function ConsultantDashboard() {
   const consultant = await getCurrentConsultant();
   if (!consultant) redirect("/consultant/login");
 
-  const bookings = await db.booking.findMany({
-    where: { consultantId: consultant.id },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    include: { user: { select: { phone: true, name: true } } }
-  });
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [bookings, paidBookings, monthlyBookings] = await Promise.all([
+    db.booking.findMany({
+      where: { consultantId: consultant.id },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      include: { user: { select: { phone: true, name: true } } }
+    }),
+    db.booking.findMany({
+      where: { consultantId: consultant.id, paymentStatus: "paid" }
+    }),
+    db.booking.findMany({
+      where: {
+        consultantId: consultant.id,
+        paymentStatus: "paid",
+        paidAt: { gte: startOfMonth }
+      }
+    })
+  ]);
 
   const statusMap: Record<string, string> = {
     pending: "در انتظار تایید ادمین",
@@ -38,57 +53,81 @@ export default async function ConsultantDashboard() {
     paid: "پرداخت شده"
   };
 
-  const paidBookings = bookings.filter(
-    b => b.paymentStatus === "paid" && b.status === "completed"
-  );
-  const income = paidBookings.reduce((s, b) => s + b.amount * 0.8, 0);
+  const totalRevenue = paidBookings.reduce((s, b) => s + b.amount * 0.8, 0);
+  const monthlyRevenue = monthlyBookings.reduce((s, b) => s + b.amount * 0.8, 0);
+  const completedCount = paidBookings.filter(b => b.status === "completed").length;
+  const pendingCount = bookings.filter(b => b.status === "pending").length;
+  const acceptedCount = bookings.filter(
+    b => b.status === "accepted" && b.paymentStatus === "paid"
+  ).length;
 
   return (
     <div className="container-tight py-10 space-y-6" dir="rtl">
-      <div>
-        <h1 className="h2">پنل مشاور</h1>
-        <p className="muted mt-1 text-sm">
-          وضعیت پروفایل:{" "}
-          <span
-            className={`font-medium ${
-              consultant.status === "approved"
-                ? "text-emerald-700"
-                : consultant.status === "rejected"
-                ? "text-red-700"
-                : "text-amber-700"
-            }`}
-          >
-            {statusMap[consultant.status]}
-          </span>
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="h2">پنل مشاور</h1>
+          <p className="muted mt-1 text-sm">
+            وضعیت پروفایل:{" "}
+            <span
+              className={`font-medium ${
+                consultant.status === "approved"
+                  ? "text-emerald-700"
+                  : consultant.status === "rejected"
+                  ? "text-red-700"
+                  : "text-amber-700"
+              }`}
+            >
+              {statusMap[consultant.status]}
+            </span>
+          </p>
+        </div>
+        <Link href="/consultant/transactions" className="btn-ghost text-sm">
+          همه تراکنش‌ها
+        </Link>
       </div>
 
+      {/* کارت‌های درآمد */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="card p-5">
+          <div className="text-xs text-slate-500">درآمد کل (۸۰٪)</div>
+          <div className="mt-2 text-xl font-black">{formatIRR(totalRevenue)}</div>
+        </div>
+        <div className="card p-5">
+          <div className="text-xs text-slate-500">درآمد ماه جاری</div>
+          <div className="mt-2 text-xl font-black">{formatIRR(monthlyRevenue)}</div>
+        </div>
+        <div className="card p-5">
+          <div className="text-xs text-slate-500">جلسات تکمیل‌شده</div>
+          <div className="mt-2 text-xl font-black">{formatNum(completedCount)}</div>
+        </div>
+        <div className="card p-5">
+          <div className="text-xs text-slate-500">در انتظار تایید شما</div>
+          <div className="mt-2 text-xl font-black">{formatNum(pendingCount)}</div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="card p-5">
+          <div className="text-xs text-slate-500">تعرفه ساعتی</div>
+          <div className="mt-2 text-xl font-bold">
+            {consultant.hourlyRate.toLocaleString("fa-IR")} تومان
+          </div>
+        </div>
+        <div className="card p-5">
+          <div className="text-xs text-slate-500">جلسات فعال (پرداخت‌شده)</div>
+          <div className="mt-2 text-xl font-bold">{formatNum(acceptedCount)}</div>
+        </div>
+      </div>
+
+      {/* عکس پروفایل */}
       <div className="card p-6">
         <div className="font-bold mb-3">عکس پروفایل</div>
         <ConsultantPhotoSection current={consultant.photoUrl} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="card p-5">
-          <div className="text-xs text-slate-500">تعرفه ساعتی</div>
-          <div className="mt-1 text-xl font-bold">
-            {consultant.hourlyRate.toLocaleString("fa-IR")} تومان
-          </div>
-        </div>
-        <div className="card p-5">
-          <div className="text-xs text-slate-500">جلسات تکمیل‌شده</div>
-          <div className="mt-1 text-xl font-bold">{paidBookings.length}</div>
-        </div>
-        <div className="card p-5">
-          <div className="text-xs text-slate-500">درآمد تاییدشده (۸۰٪)</div>
-          <div className="mt-1 text-xl font-bold">
-            {income.toLocaleString("fa-IR")} تومان
-          </div>
-        </div>
-      </div>
-
+      {/* درخواست‌های اخیر */}
       <div className="card p-6">
-        <div className="font-bold mb-3">درخواست‌های جلسه</div>
+        <div className="font-bold mb-3">آخرین درخواست‌ها</div>
         {bookings.length === 0 ? (
           <div className="muted text-sm">هنوز درخواستی نداری.</div>
         ) : (

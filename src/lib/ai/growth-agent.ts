@@ -42,15 +42,16 @@ export type GrowthInput = {
   topProducts: { name: string; amount: number; count: number }[];
   segments: { Champions: number; Loyal: number; Potential: number; AtRisk: number; Lost: number };
   dateRange: { from: string; to: string };
+  model?: string;
 };
 
 export async function growthPlan(
-  input: GrowthInput & { model?: string }
+  input: GrowthInput
 ): Promise<{ actions: GrowthAction[]; source: "ai" | "fallback" }> {
-  // ...
-  const model = input.model || "openrouter/free";
-  // ...
-}
+  const client = createClient();
+  if (!client) {
+    return { source: "fallback", actions: fallbackActions() };
+  }
 
   const industry = sanitize(input.industry, 60);
   const topList = input.topProducts
@@ -80,7 +81,7 @@ ${topList || "نامشخص"}
 هر اقدام: title, cost, eta, impact, reasoning (چرا بر اساس کدام عدد).
 خروجی فقط JSON: {"actions":[{"title","cost","eta","impact","reasoning"}]}`;
 
-  const model = process.env.AI_MODEL || "openrouter/free";
+  const model = input.model || "openrouter/free";
 
   try {
     const r = await client.chat.completions.create(
@@ -145,12 +146,16 @@ ${topList || "نامشخص"}
 
 export async function explainAction(
   action: GrowthAction,
-  context: { industry: string; kpis: { total: number; customers: number; orders: number; aov: number }; model: string }
+  context: {
+    industry: string;
+    kpis: { total: number; customers: number; orders: number; aov: number };
+    model: string;
+  }
 ): Promise<{ explanation: ActionExplanation | null }> {
   const client = createClient();
   if (!client) return { explanation: null };
 
-  const model = context.model || "qwen/qwen3-next-80b-a3b-instruct:free";
+  const model = context.model || "openrouter/free";
 
   const prompt = `تو یک مشاور رشد خبره در حوزه «${sanitize(context.industry, 60)}» هستی.
 کاربر می‌خواهد درباره این اقدام بیشتر بداند:
@@ -168,45 +173,52 @@ export async function explainAction(
   "steps": ["گام ۱ عملیاتی", "گام ۲", "گام ۳"]
 }`;
 
-try {
-  const r = await client.chat.completions.create(
-    {
-      model,
-      messages: [{ role: "user", content: prompt }],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "action_explanation",
-          strict: true,
-          schema: {
-            type: "object",
-            properties: {
-              details: { type: "string" },
-              steps: { type: "array", items: { type: "string" } }
-            },
-            required: ["details", "steps"],
-            additionalProperties: false
+  try {
+    const r = await client.chat.completions.create(
+      {
+        model,
+        messages: [{ role: "user", content: prompt }],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "action_explanation",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                details: { type: "string" },
+                steps: { type: "array", items: { type: "string" } }
+              },
+              required: ["details", "steps"],
+              additionalProperties: false
+            }
           }
-        }
+        },
+        temperature: 0.4,
+        max_tokens: 6000
       },
-      temperature: 0.4,
-      max_tokens: 6000
-    },
-    { timeout: 90000 }
-  );
+      { timeout: 90000 }
+    );
 
-  const choice = r.choices[0];
-  const text = choice?.message?.content || "";
-  if (!text.trim() || choice?.finish_reason === "length") {
+    const choice = r.choices[0];
+    const text = choice?.message?.content || "";
+    console.log("explainAction: finish_reason:", choice?.finish_reason, "content_length:", text.length);
+
+    if (!text.trim()) {
+      console.error("explainAction: empty content");
+      return { explanation: null };
+    }
+    if (choice?.finish_reason === "length") {
+      console.error("explainAction: truncated by max_tokens");
+      return { explanation: null };
+    }
+
+    const parsed = ExplainSchema.parse(JSON.parse(text));
+    return { explanation: parsed };
+  } catch (e) {
+    console.error("explainAction error:", e);
     return { explanation: null };
   }
-
-  const parsed = ExplainSchema.parse(JSON.parse(text));
-  return { explanation: parsed };
-} catch (e) {
-  console.error("explainAction error:", e);
-  return { explanation: null };
-}
 }
 
 function fallbackActions(): GrowthAction[] {

@@ -6,10 +6,12 @@ type Msg = { id: string; senderId: string; text: string; createdAt: string };
 export function ChatBox({
   bookingId,
   mySenderId,
+  role,
   disabled
 }: {
   bookingId: string;
   mySenderId: string;
+  role: "user" | "consultant";
   disabled?: boolean;
 }) {
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -60,6 +62,17 @@ export function ChatBox({
     }
   }
 
+  // رنگ‌ها بر اساس نقش
+  const myBubbleClass =
+    role === "consultant"
+      ? "bg-emerald-100 text-emerald-900 border border-emerald-200 ml-auto"
+      : "bg-blue-100 text-blue-900 border border-blue-200 ml-auto";
+
+  const otherBubbleClass =
+    role === "consultant"
+      ? "bg-blue-100 text-blue-900 border border-blue-200 mr-auto"
+      : "bg-emerald-100 text-emerald-900 border border-emerald-200 mr-auto";
+
   return (
     <div className="card p-4 space-y-3">
       <div
@@ -75,9 +88,7 @@ export function ChatBox({
             <div
               key={m.id}
               className={`rounded-xl p-2 text-sm leading-6 max-w-[85%] ${
-                mine
-                  ? "bg-brand-600 text-white ml-auto"
-                  : "bg-white border border-slate-200"
+                mine ? myBubbleClass : otherBubbleClass
               }`}
             >
               {m.text}

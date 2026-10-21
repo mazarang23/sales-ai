@@ -4,18 +4,20 @@ export type Segment = "Champions" | "Loyal" | "Potential" | "AtRisk" | "Lost";
 
 export type RfmCustomer = {
   name: string;
-  recency: number;      // روز از آخرین خرید (نسبت به امروز)
-  count: number;        // تعداد خرید
-  sum: number;          // مجموع خرید
-  first: number;        // timestamp اولین خرید
-  last: number;         // timestamp آخرین خرید
+  recency: number;
+  count: number;
+  sum: number;
+  first: number;
+  last: number;
   hasDate: boolean;
   segment: Segment;
-  segmentReason: string; // دلیل انتخاب سگمنت
+  segmentReason: string;
+  rScore: number;
+  fScore: number;
+  mScore: number;
 };
 
 export function computeRfm(rows: Row[]): RfmCustomer[] {
-  // مرجع زمانی: امروز (نه آخرین تاریخ داده)
   const now = Date.now();
 
   const byCustomer = new Map<
@@ -43,13 +45,11 @@ export function computeRfm(rows: Row[]): RfmCustomer[] {
     byCustomer.set(r.customer, c);
   }
 
-  // محاسبه‌ی اولیه‌ی recency برای همه
   const customers = [...byCustomer.entries()].map(([name, v]) => {
     const hasDate = v.last > 0;
-    // recency: روز از آخرین خرید نسبت به امروز
     const recency = hasDate
       ? Math.max(0, Math.floor((now - v.last) / 86400000))
-      : -1; // -1 یعنی تاریخ ندارد
+      : -1;
     return {
       name,
       recency,
@@ -61,13 +61,13 @@ export function computeRfm(rows: Row[]): RfmCustomer[] {
     };
   });
 
-  // محاسبه‌ی چندک‌ها (فقط برای مشتریان با تاریخ)
   const withDate = customers.filter(c => c.hasDate);
-  const sortedR = [...withDate].sort((a, b) => a.recency - b.recency); // کمترین recency = بهترین
-  const sortedF = [...withDate].sort((a, b) => b.count - a.count); // بیشترین count = بهترین
-  const sortedM = [...customers].sort((a, b) => b.sum - a.sum); // بیشترین sum = بهترین
+  const sortedR = [...withDate].sort((a, b) => a.recency - b.recency);
+  const sortedF = [...withDate].sort((a, b) => b.count - a.count);
+  const sortedM = [...customers].sort((a, b) => b.sum - a.sum);
 
   function quintile<T>(sorted: T[], item: T): number {
+    if (sorted.length === 0) return 1;
     const idx = sorted.indexOf(item);
     if (idx < 0) return 1;
     const q = sorted.length / 5;
@@ -76,17 +76,20 @@ export function computeRfm(rows: Row[]): RfmCustomer[] {
 
   return customers.map(c => {
     if (!c.hasDate) {
-      // مشتری بدون تاریخ خرید
       return {
         ...c,
         segment: "Potential" as Segment,
-        segmentReason: "تاریخ خرید ثبت نشده؛ در بخش «بالقوه» قرار گرفت."
+        segmentReason:
+          "تاریخ خرید ثبت نشده است؛ در بخش «بالقوه» قرار گرفت.",
+        rScore: 0,
+        fScore: 0,
+        mScore: 0
       };
     }
 
-    const rScore = quintile(sortedR, c); // ۵ = نزدیک‌ترین (بهترین)
-    const fScore = quintile(sortedF, c); // ۵ = بیشترین تعداد (بهترین)
-    const mScore = quintile(sortedM, c); // ۵ = بیشترین مبلغ (بهترین)
+    const rScore = quintile(sortedR, c);
+    const fScore = quintile(sortedF, c);
+    const mScore = quintile(sortedM, c);
     const avg = (rScore + fScore + mScore) / 3;
 
     let segment: Segment;
@@ -94,21 +97,21 @@ export function computeRfm(rows: Row[]): RfmCustomer[] {
 
     if (avg >= 4.5) {
       segment = "Champions";
-      reason = `میانگین ${avg.toFixed(1)}: خرید اخیر (${c.recency} روز پیش)، ${c.count} خرید، مبلغ ${Math.round(c.sum).toLocaleString("fa-IR")}`;
+      reason = `میانگین ${avg.toFixed(1)} — خرید اخیر (${c.recency} روز پیش)، ${c.count} خرید، مجموع ${Math.round(c.sum).toLocaleString("fa-IR")} تومان`;
     } else if (avg >= 3.5) {
       segment = "Loyal";
-      reason = `میانگین ${avg.toFixed(1)}: خرید اخیر (${c.recency} روز پیش)، ${c.count} خرید`;
+      reason = `میانگین ${avg.toFixed(1)} — خرید نسبتاً اخیر (${c.recency} روز پیش)، ${c.count} خرید`;
     } else if (avg >= 2.5) {
       segment = "Potential";
-      reason = `میانگین ${avg.toFixed(1)}: پتانسیل رشد (${c.recency} روز پیش، ${c.count} خرید)`;
+      reason = `میانگین ${avg.toFixed(1)} — پتانسیل رشد (${c.recency} روز پیش، ${c.count} خرید)`;
     } else if (avg >= 1.5) {
       segment = "AtRisk";
-      reason = `میانگین ${avg.toFixed(1)}: در خطر ریزش (${c.recency} روز پیش، ${c.count} خرید)`;
+      reason = `میانگین ${avg.toFixed(1)} — در خطر ریزش (${c.recency} روز پیش، ${c.count} خرید)`;
     } else {
       segment = "Lost";
-      reason = `میانگین ${avg.toFixed(1)}: از دست رفته (${c.recency} روز پیش، ${c.count} خرید)`;
+      reason = `میانگین ${avg.toFixed(1)} — از دست رفته (${c.recency} روز پیش، ${c.count} خرید)`;
     }
 
-    return { ...c, segment, segmentReason: reason };
+    return { ...c, segment, segmentReason: reason, rScore, fScore, mScore };
   });
 }

@@ -12,32 +12,21 @@ export default async function AdminDashboard() {
   const [
     usersCount,
     activeSubscriptions,
-    paidBookings,
-    allBookings,
+    paidBookingsCount,
+    allBookingsCount,
     paidSubs,
-    monthlyRevenue,
-    yearlyRevenue,
+    paidBookings,
     recentSubs,
     recentBookings
   ] = await Promise.all([
     db.user.count(),
     db.subscription.count({
-      where: {
-        status: "paid",
-        expiresAt: { gt: now }
-      }
+      where: { status: "paid", expiresAt: { gt: now } }
     }),
     db.booking.count({ where: { paymentStatus: "paid" } }),
     db.booking.count(),
     db.subscription.findMany({ where: { status: "paid" } }),
-    db.subscription.aggregate({
-      where: { status: "paid", paidAt: { gte: startOfMonth } },
-      _sum: { amount: true }
-    }),
-    db.subscription.aggregate({
-      where: { status: "paid", paidAt: { gte: startOfYear } },
-      _sum: { amount: true }
-    }),
+    db.booking.findMany({ where: { paymentStatus: "paid" } }),
     db.subscription.findMany({
       where: { status: "paid" },
       orderBy: { paidAt: "desc" },
@@ -55,15 +44,21 @@ export default async function AdminDashboard() {
     })
   ]);
 
-  const bookingRevenue = paidBookings > 0
-    ? (await db.booking.aggregate({
-        where: { paymentStatus: "paid" },
-        _sum: { amount: true }
-      }))._sum.amount || 0
-    : 0;
-
   const subsRevenue = paidSubs.reduce((s, sub) => s + sub.amount, 0);
-  const totalRevenue = bookingRevenue + subsRevenue;
+  const bookingsRevenue = paidBookings.reduce((s, b) => s + b.amount, 0);
+  const totalRevenue = subsRevenue + bookingsRevenue;
+
+  const monthlySubs = paidSubs.filter(s => s.paidAt && s.paidAt >= startOfMonth);
+  const monthlyBookings = paidBookings.filter(b => b.paidAt && b.paidAt >= startOfMonth);
+  const monthlyRevenue =
+    monthlySubs.reduce((s, x) => s + x.amount, 0) +
+    monthlyBookings.reduce((s, x) => s + x.amount, 0);
+
+  const yearlySubs = paidSubs.filter(s => s.paidAt && s.paidAt >= startOfYear);
+  const yearlyBookings = paidBookings.filter(b => b.paidAt && b.paidAt >= startOfYear);
+  const yearlyRevenue =
+    yearlySubs.reduce((s, x) => s + x.amount, 0) +
+    yearlyBookings.reduce((s, x) => s + x.amount, 0);
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -72,27 +67,25 @@ export default async function AdminDashboard() {
         <p className="muted mt-1 text-sm">خلاصه‌ای از وضعیت سیستم</p>
       </div>
 
-      {/* KPIهای اصلی */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi label="درآمد کل" value={formatIRR(totalRevenue)} hint="اشتراک + جلسات" />
-        <Kpi label="درآمد ماه جاری" value={formatIRR(monthlyRevenue._sum.amount || 0)} hint="اشتراک‌ها" />
-        <Kpi label="درآمد سال جاری" value={formatIRR(yearlyRevenue._sum.amount || 0)} hint="اشتراک‌ها" />
-        <Kpi label="پلن‌های فعال" value={formatNum(activeSubscriptions)} hint="در حال اجرا" />
+        <Kpi label="درآمد ماه جاری" value={formatIRR(monthlyRevenue)} />
+        <Kpi label="درآمد سال جاری" value={formatIRR(yearlyRevenue)} />
+        <Kpi label="پلن‌های فعال" value={formatNum(activeSubscriptions)} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi label="کل کاربران" value={formatNum(usersCount)} href="/admin/users" />
-        <Kpi label="کل جلسات" value={formatNum(allBookings)} href="/admin/bookings" />
-        <Kpi label="جلسات پرداخت‌شده" value={formatNum(paidBookings)} />
-        <Kpi label="درآمد جلسات" value={formatIRR(bookingRevenue)} />
+        <Kpi label="کل جلسات" value={formatNum(allBookingsCount)} href="/admin/bookings" />
+        <Kpi label="جلسات پرداخت‌شده" value={formatNum(paidBookingsCount)} />
+        <Kpi label="درآمد جلسات" value={formatIRR(bookingsRevenue)} />
       </div>
 
-      {/* آخرین تراکنش‌ها */}
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="font-bold">آخرین اشتراک‌ها</div>
-            <Link href="/admin/reports" className="text-sm text-brand-600">
+            <Link href="/admin/bookings" className="text-sm text-brand-600">
               همه تراکنش‌ها
             </Link>
           </div>

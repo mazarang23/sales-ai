@@ -1,13 +1,11 @@
 import { db } from "@/lib/db";
-import { formatIRR, formatNum } from "@/lib/utils";
+import { formatIRR } from "@/lib/utils";
 import { RevenueChart } from "@/components/admin/RevenueChart";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminReportsPage() {
   const now = new Date();
-
-  // درآمد ۱۲ ماه اخیر (اشتراک‌ها + جلسات)
   const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
 
   const [paidSubs, paidBookings] = await Promise.all([
@@ -21,7 +19,6 @@ export default async function AdminReportsPage() {
     })
   ]);
 
-  // گروه‌بندی ماهانه
   const monthMap = new Map<string, number>();
   for (let i = 0; i < 12; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -39,20 +36,23 @@ export default async function AdminReportsPage() {
     if (monthMap.has(key)) monthMap.set(key, (monthMap.get(key) || 0) + b.amount);
   }
 
+  const monthNames = [
+    "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
+    "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
+  ];
   const chartData = [...monthMap.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, revenue]) => {
       const [year, month] = key.split("-");
-      const monthNames = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
       return { month: `${monthNames[parseInt(month) - 1]} ${year}`, revenue };
     });
 
   const totalRevenue = [...monthMap.values()].reduce((s, v) => s + v, 0);
 
-  // درآمد اشتراک به تفکیک پلن
   const byPlan = new Map<string, number>();
   for (const s of paidSubs) {
-    const plan = s.amount === 4900000 ? "حرفه‌ای" : s.amount === 890000 ? "رشد" : "سایر";
+    const plan =
+      s.amount === 4900000 ? "حرفه‌ای" : s.amount === 890000 ? "رشد" : "سایر";
     byPlan.set(plan, (byPlan.get(plan) || 0) + s.amount);
   }
 

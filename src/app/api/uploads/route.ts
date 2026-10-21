@@ -41,7 +41,8 @@ export async function POST(req: NextRequest) {
   let appendTarget: any = null;
   if (appendToUploadId) {
     appendTarget = await db.upload.findFirst({
-      where: { id: appendToUploadId, userId: user.id }
+      where: { id: appendToUploadId, userId: user.id },
+      include: { mappings: true }
     });
     if (!appendTarget) {
       return NextResponse.json({ error: "آپلود قبلی پیدا نشد" }, { status: 404 });
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
   if (totalRows > maxRows) {
     return NextResponse.json(
       {
-        error: `تعداد ردیف‌ها (${totalRows.toLocaleString("fa-IR")}) بیشتر از سقف پلن «${planLabel}» (${maxRows.toLocaleString("fa-IR")}) است. برای آپلود بیشتر، پلن خود را ارتقا دهید.`,
+        error: `تعداد ردیف‌ها (${totalRows.toLocaleString("fa-IR")}) بیشتر از سقف پلن «${planLabel}» (${maxRows.toLocaleString("fa-IR")}) است.`,
         code: "ROW_LIMIT",
         maxRows,
         currentPlan: user.plan
@@ -80,7 +81,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ذخیره فایل
   await ensureDir(STORAGE_DIR);
   const safeName = file.name.replace(/[^\w.\-\u0600-\u06FF]/g, "_");
   const storedName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
@@ -90,12 +90,8 @@ export async function POST(req: NextRequest) {
   try {
     if (appendTarget) {
       // حالت append: ردیف‌ها را به آپلود قبلی اضافه کن
-      // از mapping قبلی استفاده می‌کنیم (ستون‌ها یکسان فرض می‌شوند)
       const mapping = appendTarget.mappings?.fieldMap || {};
-      const headers = appendTarget.mappings?.headers || Object.keys(json[0]);
 
-      // اگر ستون‌های فایل جدید با قبلی فرق دارند، فقط از mapping قبلی استفاده می‌کنیم
-      // ردیف‌ها به همان uploadId اضافه می‌شوند
       const chunkSize = 2000;
       for (let i = 0; i < json.length; i += chunkSize) {
         const chunk = json.slice(i, i + chunkSize);
@@ -103,17 +99,25 @@ export async function POST(req: NextRequest) {
           data: chunk.map(r => ({
             uploadId: appendTarget.id,
             raw: r as any,
-            customer: mapping.customer && r[mapping.customer] != null ? String(r[mapping.customer]) : null,
-            product: mapping.product && r[mapping.product] != null ? String(r[mapping.product]) : null,
+            customer:
+              mapping.customer && r[mapping.customer] != null
+                ? String(r[mapping.customer])
+                : null,
+            product:
+              mapping.product && r[mapping.product] != null
+                ? String(r[mapping.product])
+                : null,
             amount: mapping.amount ? parseAmount(r[mapping.amount]) : null,
             quantity: mapping.quantity ? parseAmount(r[mapping.quantity]) : null,
             date: mapping.date ? parseDate(r[mapping.date]) : null,
-            orderId: mapping.orderId && r[mapping.orderId] != null ? String(r[mapping.orderId]) : null
+            orderId:
+              mapping.orderId && r[mapping.orderId] != null
+                ? String(r[mapping.orderId])
+                : null
           }))
         });
       }
 
-      // به‌روزرسانی rowCount و fileSize
       await db.upload.update({
         where: { id: appendTarget.id },
         data: {
@@ -122,7 +126,7 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      // پاک کردن کش کوهورت (چون داده‌ها تغییر کردند)
+      // پاک کردن کش کوهورت
       await db.insight.deleteMany({
         where: { uploadId: appendTarget.id, kind: "cohort" }
       });
@@ -132,8 +136,6 @@ export async function POST(req: NextRequest) {
         rowCount: totalRows,
         appendedRows: json.length,
         sheetCount: wb.SheetNames.length,
-        headers,
-        mapping,
         appended: true
       });
     }
@@ -151,7 +153,9 @@ export async function POST(req: NextRequest) {
         sheetCount: wb.SheetNames.length,
         rowCount: json.length,
         status: "PROCESSING",
-        mappings: { create: { fieldMap: mapping, mergedColumns: [], headers } }
+        mappings: {
+          create: { fieldMap: mapping, mergedColumns: [], headers }
+        }
       }
     });
 
@@ -162,12 +166,21 @@ export async function POST(req: NextRequest) {
         data: chunk.map(r => ({
           uploadId: upload.id,
           raw: r as any,
-          customer: mapping.customer && r[mapping.customer] != null ? String(r[mapping.customer]) : null,
-          product: mapping.product && r[mapping.product] != null ? String(r[mapping.product]) : null,
+          customer:
+            mapping.customer && r[mapping.customer] != null
+              ? String(r[mapping.customer])
+              : null,
+          product:
+            mapping.product && r[mapping.product] != null
+              ? String(r[mapping.product])
+              : null,
           amount: mapping.amount ? parseAmount(r[mapping.amount]) : null,
           quantity: mapping.quantity ? parseAmount(r[mapping.quantity]) : null,
           date: mapping.date ? parseDate(r[mapping.date]) : null,
-          orderId: mapping.orderId && r[mapping.orderId] != null ? String(r[mapping.orderId]) : null
+          orderId:
+            mapping.orderId && r[mapping.orderId] != null
+              ? String(r[mapping.orderId])
+              : null
         }))
       });
     }
@@ -185,7 +198,9 @@ export async function POST(req: NextRequest) {
       mapping
     });
   } catch (e) {
-    try { await fs.unlink(filePath); } catch {}
+    try {
+      await fs.unlink(filePath);
+    } catch {}
     console.error("upload error:", e);
     return NextResponse.json({ error: "خطا در پردازش فایل" }, { status: 500 });
   }

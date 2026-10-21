@@ -2,6 +2,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatIRR, formatNum } from "@/lib/utils";
+import { BackButton } from "@/components/app/BackButton";
+import { AppNav } from "@/components/app/AppNav";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -9,13 +11,15 @@ export const dynamic = "force-dynamic";
 export default async function ProductDetail({
   params
 }: {
-  params: { id: string; name: string };
+  params: Promise<{ id: string; name: string }>;
 }) {
+  const { id, name: rawName } = await params;
+  const name = decodeURIComponent(rawName);
+
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  const upload = await db.upload.findFirst({ where: { id: params.id, userId: user.id } });
+  const upload = await db.upload.findFirst({ where: { id, userId: user.id } });
   if (!upload) notFound();
-  const name = decodeURIComponent(params.name);
 
   const rows = await db.dataRow.findMany({
     where: { uploadId: upload.id, product: name }
@@ -36,43 +40,46 @@ export default async function ProductDetail({
     .slice(0, 20);
 
   return (
-    <div className="container-tight py-10 max-w-3xl" dir="rtl">
-      <div className="flex items-center justify-between">
-        <h1 className="h2">{name}</h1>
-        <Link href={`/products/${upload.id}`} className="btn-ghost text-sm">
-          بازگشت
-        </Link>
-      </div>
+    <>
+      <AppNav current="dashboard" />
+      <div className="container-tight py-10 max-w-3xl" dir="rtl">
+        <BackButton href={`/products/${upload.id}`} label="بازگشت به محصولات" />
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <Kpi label="فروش کل" value={formatIRR(total)} />
-        <Kpi label="تعداد سفارش" value={formatNum(rows.length)} />
-        <Kpi label="خریدار یکتا" value={formatNum(buyers.size)} />
-      </div>
+        <h1 className="h2 mt-4">{name}</h1>
 
-      <div className="card mt-6 p-6">
-        <div className="font-bold mb-3">خریداران اصلی</div>
-        {topBuyers.length === 0 ? (
-          <div className="muted text-sm">داده‌ای نیست</div>
-        ) : (
-          <div className="space-y-2">
-            {topBuyers.map(([c, v]) => (
-              <div key={c} className="flex justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm">
-                <Link
-                  href={`/customers/${upload.id}/${encodeURIComponent(c)}`}
-                  className="text-brand-600"
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <Kpi label="فروش کل" value={formatIRR(total)} />
+          <Kpi label="تعداد سفارش" value={formatNum(rows.length)} />
+          <Kpi label="خریدار یکتا" value={formatNum(buyers.size)} />
+        </div>
+
+        <div className="card mt-6 p-6">
+          <div className="font-bold mb-3">خریداران اصلی</div>
+          {topBuyers.length === 0 ? (
+            <div className="muted text-sm">داده‌ای نیست</div>
+          ) : (
+            <div className="space-y-2">
+              {topBuyers.map(([c, v]) => (
+                <div
+                  key={c}
+                  className="flex justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm"
                 >
-                  {c}
-                </Link>
-                <span>
-                  {formatIRR(v.amount)} ({formatNum(v.count)} خرید)
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+                  <Link
+                    href={`/customers/${upload.id}/${encodeURIComponent(c)}`}
+                    className="text-brand-600"
+                  >
+                    {c}
+                  </Link>
+                  <span>
+                    {formatIRR(v.amount)} ({formatNum(v.count)} خرید)
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

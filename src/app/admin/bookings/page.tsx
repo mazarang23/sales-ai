@@ -42,7 +42,6 @@ export default async function AdminBookingsPage({
         <p className="muted mt-1 text-sm">مدیریت و تایید پرداخت‌های دستی</p>
       </div>
 
-      {/* خلاصه */}
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="card p-5">
           <div className="text-xs text-slate-500">کل تراکنش‌ها</div>
@@ -60,7 +59,6 @@ export default async function AdminBookingsPage({
         </div>
       </div>
 
-      {/* فیلتر */}
       <form className="flex gap-2 flex-wrap" action="/admin/bookings">
         <select name="status" defaultValue={statusFilter} className="input w-auto">
           <option value="">همه وضعیت‌ها</option>
@@ -76,7 +74,6 @@ export default async function AdminBookingsPage({
         )}
       </form>
 
-      {/* لیست */}
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs">

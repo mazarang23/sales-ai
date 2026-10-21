@@ -1,7 +1,3 @@
-cd $env:USERPROFILE\Desktop\sales-ai
-$path = Join-Path (Get-Location) "src\app\(app)\dashboard\[id]\page.tsx"
-$utf8NoBom = New-Object System.Text.UTF8Encoding $false
-$content = @'
 import { getCurrentUser } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { db } from "@/lib/db";
@@ -11,6 +7,7 @@ import { formatIRR, formatNum, formatDate } from "@/lib/utils";
 import { SalesChart } from "@/components/charts/SalesChart";
 import { GrowthPanel } from "@/components/app/GrowthPanel";
 import { AssistantChat } from "@/components/app/AssistantChat";
+import { ChatHistory } from "@/components/app/ChatHistory";
 import { ReportButton } from "@/components/app/ReportButton";
 import { FeedbackPopup } from "@/components/app/FeedbackPopup";
 import { DeleteUploadButton } from "@/components/app/DeleteUploadButton";
@@ -19,7 +16,11 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function Dashboard({ params }: { params: Promise<{ id: string }> }) {
+export default async function Dashboard({
+  params
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -124,6 +125,15 @@ export default async function Dashboard({ params }: { params: Promise<{ id: stri
 
         <GrowthPanel uploadId={upload.id} existingRecommendation={existingRec?.actions as any} />
         <AssistantChat uploadId={upload.id} />
+
+        {/* تاریخچه چت */}
+        <details className="card p-6">
+          <summary className="cursor-pointer font-bold">تاریخچه مکالمات</summary>
+          <div className="mt-4">
+            <ChatHistory uploadId={upload.id} />
+          </div>
+        </details>
+
         <FeedbackPopup uploadId={upload.id} feedbackGiven={user.feedbackGiven} />
       </div>
     </>
@@ -138,6 +148,3 @@ function Kpi({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-'@
-[System.IO.File]::WriteAllText($path, $content, $utf8NoBom)
-Write-Host "written: $path"

@@ -10,11 +10,31 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 const SEGMENT_INFO: Record<string, { label: string; desc: string; color: string }> = {
-  Champions: { label: "Champions", desc: "وفادارترین مشتریان، اخیر و پرخرید", color: "bg-emerald-50 text-emerald-700" },
-  Loyal: { label: "Loyal", desc: "مشتریان وفادار با خرید منظم", color: "bg-blue-50 text-blue-700" },
-  Potential: { label: "Potential", desc: "بالقوه، نیاز به فعال‌سازی", color: "bg-amber-50 text-amber-700" },
-  AtRisk: { label: "AtRisk", desc: "در خطر ریزش، نیاز به بازگشت", color: "bg-orange-50 text-orange-700" },
-  Lost: { label: "Lost", desc: "از دست رفته، نیاز به احیا", color: "bg-red-50 text-red-700" }
+  Champions: {
+    label: "Champions",
+    desc: "وفادارترین مشتریان، اخیر و پرخرید",
+    color: "bg-emerald-50 text-emerald-700"
+  },
+  Loyal: {
+    label: "Loyal",
+    desc: "مشتریان وفادار با خرید منظم",
+    color: "bg-blue-50 text-blue-700"
+  },
+  Potential: {
+    label: "Potential",
+    desc: "بالقوه، نیاز به فعال‌سازی",
+    color: "bg-amber-50 text-amber-700"
+  },
+  AtRisk: {
+    label: "AtRisk",
+    desc: "در خطر ریزش، نیاز به بازگشت",
+    color: "bg-orange-50 text-orange-700"
+  },
+  Lost: {
+    label: "Lost",
+    desc: "از دست رفته، نیاز به احیا",
+    color: "bg-red-50 text-red-700"
+  }
 };
 
 export default async function RfmPage({ params }: { params: Promise<{ id: string }> }) {
@@ -71,6 +91,11 @@ export default async function RfmPage({ params }: { params: Promise<{ id: string
                 <div className="text-xs text-slate-500 mt-3">
                   مجموع درآمد: {formatIRR(revenue)}
                 </div>
+                {customers.length > 0 && (
+                  <div className="text-xs text-slate-400 mt-2 leading-5 border-t border-slate-100 pt-2">
+                    نمونه دلیل: {customers[0].segmentReason}
+                  </div>
+                )}
               </Link>
             );
           })}

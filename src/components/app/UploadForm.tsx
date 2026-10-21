@@ -17,7 +17,6 @@ export function UploadForm() {
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [selectedUploadId, setSelectedUploadId] = useState<string>("");
 
-  // بارگذاری لیست آپلودهای قبلی
   useEffect(() => {
     fetch("/api/uploads/list")
       .then(r => r.json())
@@ -75,7 +74,7 @@ export function UploadForm() {
         setBusy(false);
         return;
       }
-      router.push(`/mapping/${j.uploadId}`);
+      router.push(`/dashboard/${j.uploadId}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "خطا");
       setBusy(false);
