@@ -9,9 +9,7 @@ RUN apt-get update -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Enable Corepack for pnpm
-RUN mkdir -p /opt/corepack \
-    && corepack enable \
-    && chmod -R a+rX /opt/corepack
+RUN corepack enable
 
 ENV PNPM_HOME="/root/.local/share/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -74,9 +72,6 @@ COPY --from=builder /app/.next/standalone ./
 
 # Copy static assets
 COPY --from=builder /app/.next/static ./.next/static
-
-# Copy public assets if they exist
-COPY --from=builder /app/public ./public
 
 # Give ownership to the application user
 RUN chown -R nextjs:nodejs /app
