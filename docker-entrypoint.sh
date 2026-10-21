@@ -1,4 +1,4 @@
-```bash
+
 #!/bin/sh
 
 set -e
@@ -23,4 +23,3 @@ echo "Database synchronization completed."
 echo "Starting Next.js..."
 
 exec node server.js
-```

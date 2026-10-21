@@ -1,4 +1,4 @@
-```dockerfile
+
 # syntax=docker/dockerfile:1
 
 # =========================
@@ -112,4 +112,3 @@ USER nextjs
 EXPOSE 3000
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-```
