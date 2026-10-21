@@ -1,0 +1,192 @@
+import { NextRequest, NextResponse } from "next/server";
+import * as XLSX from "xlsx";
+import { promises as fs } from "fs";
+import path from "path";
+import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { detectColumns, parseAmount, parseDate } from "@/lib/excel/detect-columns";
+import { getMaxRows, PLANS, getPlan } from "@/lib/plans";
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
+const STORAGE_DIR = process.env.STORAGE_DIR || "./.storage";
+const MAX_SIZE = 10 * 1024 * 1024;
+
+async function ensureDir(dir: string) {
+  try {
+    await fs.access(dir);
+  } catch {
+    await fs.mkdir(dir, { recursive: true });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+
+  const maxRows = getMaxRows(user.plan);
+  const planLabel = PLANS[getPlan(user.plan)].label;
+
+  const form = await req.formData();
+  const file = form.get("file") as File | null;
+  const appendToUploadId = form.get("appendToUploadId") as string | null;
+
+  if (!file) return NextResponse.json({ error: "فایلی انتخاب نشده" }, { status: 400 });
+  if (file.size > MAX_SIZE) {
+    return NextResponse.json({ error: "فایل بزرگ‌تر از ۱۰ مگابایت است" }, { status: 400 });
+  }
+
+  // اگر append mode است، آپلود قبلی را پیدا کن
+  let appendTarget: any = null;
+  if (appendToUploadId) {
+    appendTarget = await db.upload.findFirst({
+      where: { id: appendToUploadId, userId: user.id }
+    });
+    if (!appendTarget) {
+      return NextResponse.json({ error: "آپلود قبلی پیدا نشد" }, { status: 404 });
+    }
+  }
+
+  const buf = Buffer.from(await file.arrayBuffer());
+  let wb;
+  try {
+    wb = XLSX.read(buf, { cellDates: true });
+  } catch {
+    return NextResponse.json({ error: "فایل اکسل نامعتبر است" }, { status: 400 });
+  }
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const json = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, {
+    defval: null,
+    raw: true
+  });
+
+  if (json.length === 0) {
+    return NextResponse.json({ error: "فایل خالی است" }, { status: 400 });
+  }
+
+  // بررسی سقف: تعداد کل ردیف‌ها (قبلی + جدید)
+  const existingRowCount = appendTarget ? appendTarget.rowCount : 0;
+  const totalRows = existingRowCount + json.length;
+  if (totalRows > maxRows) {
+    return NextResponse.json(
+      {
+        error: `تعداد ردیف‌ها (${totalRows.toLocaleString("fa-IR")}) بیشتر از سقف پلن «${planLabel}» (${maxRows.toLocaleString("fa-IR")}) است. برای آپلود بیشتر، پلن خود را ارتقا دهید.`,
+        code: "ROW_LIMIT",
+        maxRows,
+        currentPlan: user.plan
+      },
+      { status: 400 }
+    );
+  }
+
+  // ذخیره فایل
+  await ensureDir(STORAGE_DIR);
+  const safeName = file.name.replace(/[^\w.\-\u0600-\u06FF]/g, "_");
+  const storedName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
+  const filePath = path.join(STORAGE_DIR, storedName);
+  await fs.writeFile(filePath, buf);
+
+  try {
+    if (appendTarget) {
+      // حالت append: ردیف‌ها را به آپلود قبلی اضافه کن
+      // از mapping قبلی استفاده می‌کنیم (ستون‌ها یکسان فرض می‌شوند)
+      const mapping = appendTarget.mappings?.fieldMap || {};
+      const headers = appendTarget.mappings?.headers || Object.keys(json[0]);
+
+      // اگر ستون‌های فایل جدید با قبلی فرق دارند، فقط از mapping قبلی استفاده می‌کنیم
+      // ردیف‌ها به همان uploadId اضافه می‌شوند
+      const chunkSize = 2000;
+      for (let i = 0; i < json.length; i += chunkSize) {
+        const chunk = json.slice(i, i + chunkSize);
+        await db.dataRow.createMany({
+          data: chunk.map(r => ({
+            uploadId: appendTarget.id,
+            raw: r as any,
+            customer: mapping.customer && r[mapping.customer] != null ? String(r[mapping.customer]) : null,
+            product: mapping.product && r[mapping.product] != null ? String(r[mapping.product]) : null,
+            amount: mapping.amount ? parseAmount(r[mapping.amount]) : null,
+            quantity: mapping.quantity ? parseAmount(r[mapping.quantity]) : null,
+            date: mapping.date ? parseDate(r[mapping.date]) : null,
+            orderId: mapping.orderId && r[mapping.orderId] != null ? String(r[mapping.orderId]) : null
+          }))
+        });
+      }
+
+      // به‌روزرسانی rowCount و fileSize
+      await db.upload.update({
+        where: { id: appendTarget.id },
+        data: {
+          rowCount: totalRows,
+          fileSize: appendTarget.fileSize + buf.length
+        }
+      });
+
+      // پاک کردن کش کوهورت (چون داده‌ها تغییر کردند)
+      await db.insight.deleteMany({
+        where: { uploadId: appendTarget.id, kind: "cohort" }
+      });
+
+      return NextResponse.json({
+        uploadId: appendTarget.id,
+        rowCount: totalRows,
+        appendedRows: json.length,
+        sheetCount: wb.SheetNames.length,
+        headers,
+        mapping,
+        appended: true
+      });
+    }
+
+    // حالت عادی: آپلود جدید
+    const headers = Object.keys(json[0]);
+    const mapping = detectColumns(headers, json.slice(0, 20));
+
+    const upload = await db.upload.create({
+      data: {
+        userId: user.id,
+        fileName: file.name,
+        fileKey: storedName,
+        fileSize: buf.length,
+        sheetCount: wb.SheetNames.length,
+        rowCount: json.length,
+        status: "PROCESSING",
+        mappings: { create: { fieldMap: mapping, mergedColumns: [], headers } }
+      }
+    });
+
+    const chunkSize = 2000;
+    for (let i = 0; i < json.length; i += chunkSize) {
+      const chunk = json.slice(i, i + chunkSize);
+      await db.dataRow.createMany({
+        data: chunk.map(r => ({
+          uploadId: upload.id,
+          raw: r as any,
+          customer: mapping.customer && r[mapping.customer] != null ? String(r[mapping.customer]) : null,
+          product: mapping.product && r[mapping.product] != null ? String(r[mapping.product]) : null,
+          amount: mapping.amount ? parseAmount(r[mapping.amount]) : null,
+          quantity: mapping.quantity ? parseAmount(r[mapping.quantity]) : null,
+          date: mapping.date ? parseDate(r[mapping.date]) : null,
+          orderId: mapping.orderId && r[mapping.orderId] != null ? String(r[mapping.orderId]) : null
+        }))
+      });
+    }
+
+    await db.upload.update({
+      where: { id: upload.id },
+      data: { status: "READY" }
+    });
+
+    return NextResponse.json({
+      uploadId: upload.id,
+      rowCount: json.length,
+      sheetCount: wb.SheetNames.length,
+      headers,
+      mapping
+    });
+  } catch (e) {
+    try { await fs.unlink(filePath); } catch {}
+    console.error("upload error:", e);
+    return NextResponse.json({ error: "خطا در پردازش فایل" }, { status: 500 });
+  }
+}

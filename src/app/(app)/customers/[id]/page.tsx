@@ -1,0 +1,179 @@
+import { getCurrentUser } from "@/lib/auth";
+import { redirect, notFound } from "next/navigation";
+import { db } from "@/lib/db";
+import { computeRfm } from "@/lib/analytics/rfm";
+import { formatIRR, formatNum } from "@/lib/utils";
+import { BackButton } from "@/components/app/BackButton";
+import { AppNav } from "@/components/app/AppNav";
+import Link from "next/link";
+
+export const dynamic = "force-dynamic";
+
+export default async function CustomersPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ q?: string; page?: string; segment?: string; sort?: string }>;
+}) {
+  const { id } = await params;
+  const sp = await searchParams;
+
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  const upload = await db.upload.findFirst({ where: { id, userId: user.id } });
+  if (!upload) notFound();
+
+  const rows = await db.dataRow.findMany({ where: { uploadId: upload.id } });
+  let customers = computeRfm(rows as any);
+
+  const q = (sp.q || "").trim();
+  if (q) customers = customers.filter(c => c.name.includes(q));
+
+  const segment = sp.segment || "";
+  if (segment) customers = customers.filter(c => c.segment === segment);
+
+  const sort = sp.sort || "sum";
+  if (sort === "sum") customers.sort((a, b) => b.sum - a.sum);
+  else if (sort === "count") customers.sort((a, b) => b.count - a.count);
+  else if (sort === "recency")
+    customers.sort((a, b) => {
+      if (!a.hasDate) return 1;
+      if (!b.hasDate) return -1;
+      return a.recency - b.recency;
+    });
+  else if (sort === "name") customers.sort((a, b) => a.name.localeCompare(b.name, "fa"));
+
+  const perPage = 50;
+  const page = Math.max(1, Number(sp.page) || 1);
+  const total = customers.length;
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = customers.slice((safePage - 1) * perPage, safePage * perPage);
+
+  function buildQuery(patch: Record<string, string | number | undefined>) {
+    const qs = new URLSearchParams();
+    const merged = { q, segment, sort, page: safePage, ...patch };
+    Object.entries(merged).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    return `/customers/${upload!.id}?${qs.toString()}`;
+  }
+
+  return (
+    <>
+      <AppNav current="dashboard" />
+      <div className="container-tight py-10" dir="rtl">
+        <div className="flex items-center justify-between mb-4">
+          <BackButton href={`/dashboard/${upload.id}`} label="بازگشت به داشبورد" />
+          <Link href={`/rfm/${upload.id}`} className="btn-ghost text-sm">
+            تحلیل RFM
+          </Link>
+        </div>
+
+        <h1 className="h2">مشتریان</h1>
+
+        <form className="mt-4 flex flex-wrap gap-2" action={`/customers/${upload.id}`}>
+          <input
+            name="q"
+            defaultValue={q}
+            placeholder="جستجو نام مشتری..."
+            className="input flex-1 min-w-[200px]"
+          />
+          <select name="segment" defaultValue={segment} className="input w-auto">
+            <option value="">همه سگمنت‌ها</option>
+            <option value="Champions">Champions</option>
+            <option value="Loyal">Loyal</option>
+            <option value="Potential">Potential</option>
+            <option value="AtRisk">AtRisk</option>
+            <option value="Lost">Lost</option>
+          </select>
+          <select name="sort" defaultValue={sort} className="input w-auto">
+            <option value="sum">بیشترین خرید</option>
+            <option value="count">بیشترین تعداد</option>
+            <option value="recency">کمترین فاصله</option>
+            <option value="name">نام</option>
+          </select>
+          <button className="btn-ghost">اعمال فیلتر</button>
+        </form>
+
+        {segment && (
+          <div className="mt-3 rounded-xl bg-brand-50 text-brand-700 p-3 text-sm flex items-center justify-between">
+            <span>فیلتر فعال: سگمنت {segment}</span>
+            <Link href={`/customers/${upload.id}`} className="text-xs underline">
+              حذف فیلتر
+            </Link>
+          </div>
+        )}
+
+        <div className="mt-3 text-sm text-slate-600">
+          {formatNum(total)} مشتری — صفحه {formatNum(safePage)} از {formatNum(totalPages)}
+        </div>
+
+        <div className="mt-4 card overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-xs">
+              <tr>
+                <th className="px-3 py-3 text-right">مشتری</th>
+                <th className="px-3 py-3 text-right">سگمنت</th>
+                <th className="px-3 py-3 text-right">تعداد خرید</th>
+                <th className="px-3 py-3 text-right">مجموع</th>
+                <th className="px-3 py-3 text-right">روز از آخرین</th>
+                <th className="px-3 py-3 text-right"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.map(c => (
+                <tr key={c.name} className="border-t border-slate-100">
+                  <td className="px-3 py-2">{c.name}</td>
+                  <td className="px-3 py-2">
+                    <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs">
+                      {c.segment}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">{formatNum(c.count)}</td>
+                  <td className="px-3 py-2">{formatIRR(c.sum)}</td>
+                  <td className="px-3 py-2">
+                    {c.hasDate ? (
+                      formatNum(c.recency)
+                    ) : (
+                      <span className="text-slate-400">نامعلوم</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-left">
+                    <Link
+                      href={`/customers/${upload.id}/${encodeURIComponent(c.name)}`}
+                      className="text-brand-600"
+                    >
+                      جزئیات
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+              {pageItems.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-6 text-center muted">
+                    داده‌ای یافت نشد
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-4 flex items-center justify-center gap-2">
+          {safePage > 1 && (
+            <Link href={buildQuery({ page: safePage - 1 })} className="btn-ghost text-sm">
+              صفحه قبل
+            </Link>
+          )}
+          {safePage < totalPages && (
+            <Link href={buildQuery({ page: safePage + 1 })} className="btn-ghost text-sm">
+              صفحه بعد
+            </Link>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}

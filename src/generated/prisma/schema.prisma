@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id         String    @id @default(cuid())
+  phone      String    @unique
+  name       String?
+  password   String?
+  industry   String?
+  role       Role      @default(USER)
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+  uploads    Upload[]
+  sessions   Session[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Upload {
+  id         String           @id @default(cuid())
+  userId     String
+  fileName   String
+  fileKey    String
+  fileSize   Int              @default(0)
+  sheetCount Int              @default(1)
+  rowCount   Int              @default(0)
+  status     UploadStatus     @default(PENDING)
+  mappings   Mapping?
+  rows       DataRow[]
+  insights   Insight[]
+  recs       Recommendation[]
+  createdAt  DateTime         @default(now())
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum UploadStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+model Mapping {
+  id            String @id @default(cuid())
+  uploadId      String @unique
+  fieldMap      Json
+  mergedColumns Json
+  headers       Json
+  upload        Upload @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+}
+
+model DataRow {
+  id       String    @id @default(cuid())
+  uploadId String
+  raw      Json
+  customer String?
+  product  String?
+  amount   Float?
+  date     DateTime?
+  orderId  String?
+  upload   Upload    @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+
+  @@index([uploadId])
+  @@index([uploadId, customer])
+  @@index([uploadId, product])
+}
+
+model Insight {
+  id        String   @id @default(cuid())
+  uploadId  String
+  kind      String
+  payload   Json
+  createdAt DateTime @default(now())
+  upload    Upload   @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+}
+
+model Recommendation {
+  id        String   @id @default(cuid())
+  uploadId  String
+  industry  String
+  actions   Json
+  createdAt DateTime @default(now())
+  upload    Upload   @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+}
+
+model SiteContent {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  type      String
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model BlogPost {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  excerpt   String
+  body      String
+  coverUrl  String?
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  phone     String
+  industry  String?
+  source    String?
+  createdAt DateTime @default(now())
+}

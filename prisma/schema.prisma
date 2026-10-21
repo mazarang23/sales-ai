@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String         @id @default(cuid())
+  phone            String         @unique
+  name             String?
+  password         String?
+  industry         String?
+  role             Role           @default(USER)
+  plan             String         @default("free")
+  planExpiresAt    DateTime?
+  walletBalance    Int            @default(0)
+  aiQuestionsUsed  Int            @default(0)
+  aiQuestionsLimit Int            @default(1)
+  feedbackGiven    Boolean        @default(false)
+  lastSeenAt       DateTime?
+  createdAt        DateTime       @default(now())
+  uploads          Upload[]
+  sessions         Session[]
+  consultant       Consultant?
+  bookings         Booking[]
+  subscriptions    Subscription[]
+}
+
+model Subscription {
+  id          String   @id @default(cuid())
+  userId      String
+  plan        String   // "pro" | "business"
+  amount      Int
+  status      String   @default("pending") // pending | paid | failed
+  authority   String?  @unique
+  refId       String?
+  paidAt      DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Consultant {
+  id            String    @id @default(cuid())
+  phone         String    @unique
+  password      String
+  displayName   String
+  bio           String
+  photoUrl      String?
+  linkedin      String?
+  instagram     String?
+  hourlyRate    Int
+  status        String    @default("pending")
+  userId        String?   @unique
+  createdAt     DateTime  @default(now())
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sessions      ConsultantSession[]
+  bookings      Booking[]
+}
+
+model ConsultantSession {
+  id           String     @id @default(cuid())
+  consultantId String
+  token        String     @unique
+  expiresAt    DateTime
+  consultant   Consultant @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+}
+
+model Upload {
+  id         String       @id @default(cuid())
+  userId     String
+  fileName   String
+  fileKey    String
+  fileSize   Int          @default(0)
+  sheetCount Int          @default(1)
+  rowCount   Int          @default(0)
+  status     UploadStatus @default(PENDING)
+  mappings   Mapping?
+  rows       DataRow[]
+  insights   Insight[]
+  recs       Recommendation[]
+  createdAt  DateTime     @default(now())
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum UploadStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+model Mapping {
+  id            String   @id @default(cuid())
+  uploadId      String   @unique
+  fieldMap      Json
+  mergedColumns Json
+  headers       Json
+  upload        Upload   @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+}
+
+model DataRow {
+  id       String    @id @default(cuid())
+  uploadId String
+  raw      Json
+  customer String?
+  product  String?
+  amount   Float?
+  quantity Float?
+  date     DateTime?
+  orderId  String?
+  upload   Upload    @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+
+  @@index([uploadId])
+  @@index([uploadId, customer])
+  @@index([uploadId, product])
+  @@index([uploadId, date])
+}
+
+model Insight {
+  id        String   @id @default(cuid())
+  uploadId  String
+  kind      String
+  payload   Json
+  createdAt DateTime @default(now())
+  upload    Upload   @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+}
+
+model Recommendation {
+  id        String   @id @default(cuid())
+  uploadId  String
+  industry  String
+  actions   Json
+  createdAt DateTime @default(now())
+  upload    Upload   @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+}
+
+model SiteContent {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  type      String
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model BlogPost {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  excerpt   String
+  body      String
+  coverUrl  String?
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  phone     String
+  industry  String?
+  source    String?
+  createdAt DateTime @default(now())
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  uploadId  String?
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([userId, uploadId])
+}
+
+model Booking {
+  id            String     @id @default(cuid())
+  consultantId  String
+  userId        String
+  status        String     @default("pending")
+  paymentStatus String     @default("unpaid")
+  paidAt        DateTime?
+  hours         Int        @default(1)
+  scheduledAt   DateTime?
+  amount        Int
+  commission    Int        @default(20)
+  createdAt     DateTime   @default(now())
+  consultant    Consultant @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages      Message[]
+  review        Review?
+}
+
+model Notification {
+  id           String   @id @default(cuid())
+  userId       String?
+  consultantId String?
+  type         String   // "booking_new" | "booking_accepted" | "booking_paid" | "booking_completed" | ...
+  title        String
+  body         String
+  link         String?  // لینک به صفحه مربوطه
+  readAt       DateTime?
+  smsSentAt    DateTime?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([consultantId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  bookingId String
+  senderId  String
+  text      String
+  createdAt DateTime @default(now())
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  bookingId String   @unique
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
