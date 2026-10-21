@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // output: "standalone",  ← حذف کن
   experimental: { serverActions: { bodySizeLimit: "25mb" } },
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
