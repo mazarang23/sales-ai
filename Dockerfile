@@ -7,18 +7,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 FROM base AS deps
 WORKDIR /app
 
-# نصب pnpm از رجیستری در دسترس
+# نصب pnpm از رجیستری در دسترس (npmmirror معمولاً از ایران/آلمان در دسترس است)
 RUN npm install -g pnpm@10 --registry=https://registry.npmmirror.com
 
 COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml ./
 
-# مرحله ۱: دانلود پکیج‌ها (قابل کش بین بیلدها)
+# نصب مستقیم با prefer-offline (اگر پکیجی در کش نبود، از شبکه می‌گیرد)
+# و اسکریپت‌های lifecycle را اجرا می‌کند
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm fetch
-
-# مرحله ۲: نصب آفلاین از کش (بدون نیاز به شبکه)
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile --offline
+    pnpm install --frozen-lockfile --prefer-offline
 
 # ── Stage 3: Builder ───────────────────────────────────────────
 FROM base AS builder
@@ -29,12 +26,11 @@ COPY . .
 
 RUN npm install -g pnpm@10 --registry=https://registry.npmmirror.com
 
-# تولید Prisma Client با یک DATABASE_URL موقت
-# (چون prisma.config.ts در زمان generate به آن نیاز دارد)
+# تولید Prisma Client با DATABASE_URL موقت
 RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" \
     pnpm prisma generate
 
-# بیلد Next.js در حالت standalone
+# بیلد Next.js
 RUN pnpm build
 
 # ── Stage 4: Runner ────────────────────────────────────────────
@@ -45,16 +41,14 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# کاربر غیر root برای امنیت
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# کپی خروجی standalone
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# کپی Prisma (برای جلوگیری از خطای PrismaClientInitializationError)
+# کپی Prisma برای جلوگیری از خطای PrismaClientInitializationError
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
