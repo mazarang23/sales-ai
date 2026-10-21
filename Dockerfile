@@ -3,6 +3,10 @@ ENV CI=true
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
 
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends openssl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable
 
 # ---- deps ----

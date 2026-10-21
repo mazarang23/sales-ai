@@ -1,11 +1,22 @@
 import { MetadataRoute } from "next";
 import { db } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const staticRoutes = ["", "/pricing", "/about", "/blog", "/register"];
   const industries = ["clothing", "gold", "cosmetics", "restaurant", "grocery", "digital"];
-  const posts = await db.blogPost.findMany({ where: { published: true } });
+
+  let posts: { slug: string; createdAt: Date }[] = [];
+  try {
+    posts = await db.blogPost.findMany({
+      where: { published: true },
+      select: { slug: true, createdAt: true }
+    });
+  } catch {
+    posts = [];
+  }
 
   return [
     ...staticRoutes.map(r => ({
