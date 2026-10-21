@@ -16,7 +16,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN corepack enable
-RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" pnpm prisma generate
+# اجرای prisma generate با DATABASE_URL موقت و بررسی موفقیت
+RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" pnpm prisma generate || (echo "PRISMA GENERATE FAILED" && exit 1)
+# حالا build
 RUN pnpm build
 
 FROM base AS runner
