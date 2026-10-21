@@ -2,13 +2,14 @@ FROM node:22-slim AS base
 ENV CI=true
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
+ENV COREPACK_HOME=/opt/corepack
 ENV RAYON_NUM_THREADS=1
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends openssl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-RUN corepack enable
+RUN corepack enable && chmod -R a+rX /opt/corepack
 
 # ---- deps ----
 FROM base AS deps
@@ -33,6 +34,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+ENV COREPACK_HOME=/opt/corepack
+ENV COREPACK_ENABLE_NETWORK=0
 
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
@@ -40,4 +43,4 @@ COPY --from=builder --chown=nextjs:nodejs /app ./
 
 USER nextjs
 EXPOSE 3000
-CMD ["pnpm", "start"]
+CMD ["npm", "start"]
