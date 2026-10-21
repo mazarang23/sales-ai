@@ -9,7 +9,10 @@ RUN apt-get update -y && \
     apt-get install -y --no-install-recommends openssl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-RUN corepack enable && chmod -R a+rX /opt/corepack
+# ساخت پوشه COREPACK_HOME قبل از فعال‌سازی
+RUN mkdir -p /opt/corepack && \
+    corepack enable && \
+    chmod -R a+rX /opt/corepack
 
 # ---- deps ----
 FROM base AS deps
