@@ -69,27 +69,46 @@ RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
 
-# Next.js standalone application
+# =========================
+# NEXT.JS
+# =========================
+
 COPY --from=builder /app/.next/standalone ./
 
-# Next.js static assets
 COPY --from=builder /app/.next/static ./.next/static
+
+
+# =========================
+# PRISMA
+# =========================
+
+# Copy the complete node_modules from dependencies stage.
+# This includes:
+# - prisma
+# - @prisma/client
+# - @prisma/engines
+# - Prisma engines
+# - Prisma dependencies
+COPY --from=deps /app/node_modules ./node_modules
 
 # Prisma schema
 COPY --from=builder /app/prisma ./prisma
 
-# Prisma CLI
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
-# Prisma generated client/runtime
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+# =========================
+# STARTUP
+# =========================
 
-# Startup script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 
 RUN chmod +x /docker-entrypoint.sh \
     && chown -R nextjs:nodejs /app \
     && chown nextjs:nodejs /docker-entrypoint.sh
+
+
+# =========================
+# USER
+# =========================
 
 USER nextjs
 
