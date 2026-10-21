@@ -4,7 +4,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 FROM base AS deps
 WORKDIR /app
-RUN npm install -g pnpm@10 --registry=https://registry.npmmirror.com
+RUN npm install -g pnpm@10.26 --registry=https://registry.npmmirror.com
 COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml ./
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --prefer-offline
@@ -13,7 +13,7 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm install -g pnpm@10 --registry=https://registry.npmmirror.com
+RUN npm install -g pnpm@10.26 --registry=https://registry.npmmirror.com
 RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" pnpm prisma generate
 RUN pnpm build
 
