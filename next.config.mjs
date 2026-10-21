@@ -6,10 +6,9 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "25mb",
     },
-    webpackBuildWorker: false,
-  },
 
-  cpus: 1,
+    webpackBuildWorker: true,
+  },
 
   eslint: {
     ignoreDuringBuilds: true,
@@ -17,6 +16,19 @@ const nextConfig = {
 
   typescript: {
     ignoreBuildErrors: true,
+  },
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "cdn.jsdelivr.net",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+    ],
   },
 };
 

@@ -1,15 +1,20 @@
+```dockerfile
 # syntax=docker/dockerfile:1
 
-FROM node:22-slim AS base
+# =========================
+# BASE
+# =========================
 
-ENV CI=true
-ENV NEXT_TELEMETRY_DISABLED=1
+FROM node:22-slim AS base
 
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 RUN corepack enable
+
+ENV PNPM_HOME="/root/.local/share/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 
 
 # =========================
@@ -20,7 +25,7 @@ FROM base AS deps
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml ./
 
 RUN pnpm install --frozen-lockfile
 
@@ -37,9 +42,11 @@ COPY --from=deps /app/node_modules ./node_modules
 
 COPY . .
 
+# Generate Prisma Client
 RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" \
     pnpm prisma generate
 
+# Build Next.js
 RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" \
     pnpm build
 
@@ -64,13 +71,30 @@ RUN apt-get update -y \
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
+
+# =========================
+# NEXT.JS
+# =========================
+
 COPY --from=builder /app/.next/standalone ./
 
 COPY --from=builder /app/.next/static ./.next/static
 
+
+# =========================
+# PRISMA
+# =========================
+
+# Prisma CLI + engines + dependencies
 COPY --from=deps /app/node_modules ./node_modules
 
+# Prisma schema
 COPY --from=builder /app/prisma ./prisma
+
+
+# =========================
+# STARTUP SCRIPT
+# =========================
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 
@@ -78,8 +102,14 @@ RUN chmod +x /docker-entrypoint.sh \
     && chown -R nextjs:nodejs /app \
     && chown nextjs:nodejs /docker-entrypoint.sh
 
+
+# =========================
+# USER / PORT
+# =========================
+
 USER nextjs
 
 EXPOSE 3000
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
+```
