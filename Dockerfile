@@ -1,26 +1,30 @@
 FROM node:22-slim AS base
 ENV CI=true
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
+ENV RAYON_NUM_THREADS=1
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends openssl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# نصب مستقیم pnpm (بدون Corepack)
-RUN npm install -g pnpm@10.26.0 --registry=https://registry.npmmirror.com
+RUN corepack enable
 
 # ---- deps ----
 FROM base AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml ./
-RUN pnpm install --prefer-offline
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --prefer-offline
 
 # ---- builder ----
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN corepack enable
 RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" pnpm prisma generate
+ENV NEXT_WORKER_THREADS=1
 RUN pnpm build
 
 # ---- runner ----

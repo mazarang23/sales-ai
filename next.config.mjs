@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: { serverActions: { bodySizeLimit: "25mb" } },
+  experimental: {
+    serverActions: { bodySizeLimit: "25mb" },
+    webpackBuildWorker: false,
+  },
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
   images: {
