@@ -51,7 +51,7 @@ export async function recordAiUsage(input: {
   model: string;
   usage?: any;
   costUsd?: number;
-  uploadId?: string;
+  uploadId: string;
 }) {
   const promptTokens = Number(input.usage?.prompt_tokens || 0);
   const completionTokens = Number(input.usage?.completion_tokens || 0);
@@ -86,7 +86,7 @@ export async function recordAiUsage(input: {
 
   await db.insight.create({
     data: {
-      uploadId: input.uploadId || undefined,
+      uploadId: input.uploadId,
       kind: "ai_usage",
       payload: {
         userId: input.userId,
