@@ -41,7 +41,7 @@ export function MappingEditor({
   const [headers, setHeaders] = useState<string[]>(initialHeaders);
   const [fieldMap, setFieldMap] = useState<Record<string, string>>(initialFieldMap || {});
   const [merges, setMerges] = useState<Merge[]>(initialMerges || []);
-  const [currency, setCurrency] = useState<Currency>(initialCurrency || "toman");
+  const [currency, setCurrency] = useState<Currency>(initialCurrency || "rial");
   const [busyMerge, setBusyMerge] = useState(false);
   const [busySave, setBusySave] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -50,7 +50,6 @@ export function MappingEditor({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  // ستون‌هایی که قبلاً به فیلدی اختصاص داده شده‌اند
   const usedColumns = useMemo(() => {
     const used = new Set<string>();
     for (const v of Object.values(fieldMap)) if (v) used.add(v);
@@ -58,7 +57,6 @@ export function MappingEditor({
     return used;
   }, [fieldMap, merges]);
 
-  // ستون‌هایی که باید در پیش‌نمایش نشان داده شوند
   const selectedColumns = useMemo(() => {
     const cols = new Set<string>();
     for (const v of Object.values(fieldMap)) if (v) cols.add(v);
@@ -94,15 +92,11 @@ export function MappingEditor({
   }
 
   function toggleMergeFrom(i: number, h: string) {
-    setMerges(prev =>
-      prev.map((m, idx) => {
-        if (idx !== i) return m;
-        const from = m.from.includes(h)
-          ? m.from.filter(x => x !== h)
-          : [...m.from, h];
-        return { ...m, from };
-      })
-    );
+    setMerges(prev => prev.map((m, idx) => {
+      if (idx !== i) return m;
+      const from = m.from.includes(h) ? m.from.filter(x => x !== h) : [...m.from, h];
+      return { ...m, from };
+    }));
   }
 
   function removeMerge(i: number) {
@@ -158,68 +152,37 @@ export function MappingEditor({
       <div className="space-y-6">
         <div className="card p-6">
           <div className="font-bold mb-1">۱. نگاشت ستون‌ها</div>
-          <p className="muted text-sm mb-4">
-            ستون‌ها را از لیست سمت راست به فیلدهای سمت چپ بکش. یا روی فیلد کلیک کن و از dropdown انتخاب کن.
-          </p>
-
+          <p className="muted text-sm mb-4">ستون‌ها را از لیست سمت راست به فیلدهای سمت چپ بکش. یا روی فیلد کلیک کن و از dropdown انتخاب کن.</p>
           <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-            {/* لیست ستون‌ها */}
             <div>
-              <div className="text-xs text-slate-500 mb-2 font-medium">
-                ستون‌های فایل ({headers.length})
-              </div>
+              <div className="text-xs text-slate-500 mb-2 font-medium">ستون‌های فایل ({headers.length})</div>
               <div className="flex flex-wrap gap-2 max-h-96 overflow-y-auto p-2 rounded-xl bg-slate-50">
-                {headers.map(h => (
-                  <DraggableColumn key={h} id={h} used={usedColumns.has(h)} />
-                ))}
+                {headers.map(h => <DraggableColumn key={h} id={h} used={usedColumns.has(h)} />)}
               </div>
             </div>
-
-            {/* فیلدهای هدف */}
             <div>
-              <div className="text-xs text-slate-500 mb-2 font-medium">
-                فیلدهای موردنیاز
-              </div>
+              <div className="text-xs text-slate-500 mb-2 font-medium">فیلدهای موردنیاز</div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {FIELDS.map(f => (
-                <DroppableField
-                  key={f.k}
-                  id={f.k}
-                  label={f.l}
-                  value={fieldMap[f.k]}
-                  headers={headers}
-                  onSelect={col => setFieldMap(prev => ({ ...prev, [f.k]: col }))}
-                  onClear={() => clearField(f.k)}
-                />
+                  <DroppableField key={f.k} id={f.k} label={f.l} value={fieldMap[f.k]} headers={headers}
+                    onSelect={col => setFieldMap(prev => ({ ...prev, [f.k]: col }))}
+                    onClear={() => clearField(f.k)} />
                 ))}
               </div>
               {!fieldMap.amount && !fieldMap.date && (
-                <div className="mt-3 rounded-xl bg-amber-50 text-amber-800 p-3 text-xs">
-                  ⚠️ حداقل ستون «مبلغ» یا «تاریخ» را انتخاب کن. در غیر این صورت تحلیل‌ها صفر می‌شوند.
-                </div>
+                <div className="mt-3 rounded-xl bg-amber-50 text-amber-800 p-3 text-xs">⚠️ حداقل ستون «مبلغ» یا «تاریخ» را انتخاب کن. در غیر این صورت تحلیل‌ها صفر می‌شوند.</div>
               )}
             </div>
           </div>
         </div>
 
         <div className="card p-6">
-          <div className="font-bold mb-1">واحد پول</div>
-          <p className="muted text-sm mb-4">
-            فایل شما مبالغ را به چه واحدی ذخیره کرده؟
-          </p>
+          <div className="font-bold mb-1">واحد پول فایل</div>
+          <p className="muted text-sm mb-4">مبلغ‌های فایل با چه واحدی ثبت شده‌اند؟ مقدارها قبل از تحلیل به واحد پایهٔ ریال تبدیل می‌شوند.</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {CURRENCIES.map(c => (
-              <label
-                key={c.value}
-                className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 cursor-pointer hover:border-brand-500"
-              >
-                <input
-                  type="radio"
-                  name="currency"
-                  value={c.value}
-                  checked={currency === c.value}
-                  onChange={() => setCurrency(c.value)}
-                />
+              <label key={c.value} className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 cursor-pointer hover:border-brand-500">
+                <input type="radio" name="currency" value={c.value} checked={currency === c.value} onChange={() => setCurrency(c.value)} />
                 <span className="text-sm">{c.label}</span>
               </label>
             ))}
@@ -229,116 +192,48 @@ export function MappingEditor({
         <div className="card p-6">
           <div className="flex items-center justify-between mb-1">
             <div className="font-bold">۲. ادغام ستون‌ها (اختیاری)</div>
-            <button type="button" onClick={addMerge} className="btn-ghost text-sm">
-              + افزودن ادغام
-            </button>
+            <button type="button" onClick={addMerge} className="btn-ghost text-sm">+ افزودن ادغام</button>
           </div>
-          <p className="muted text-sm mb-4">
-            مثلاً «نام» + «نام خانوادگی» به «نام کامل».
-          </p>
+          <p className="muted text-sm mb-4">مثلاً «نام» + «نام خانوادگی» به «نام کامل».</p>
           <div className="space-y-4">
             {merges.map((m, i) => (
               <div key={i} className="rounded-xl border border-slate-200 p-4">
                 <div className="flex gap-2 items-center">
-                  <input
-                    className="input"
-                    placeholder="نام ستون جدید"
-                    value={m.name}
-                    onChange={e => updateMergeName(i, e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeMerge(i)}
-                    className="btn-ghost text-red-600 text-sm shrink-0"
-                  >
-                    حذف
-                  </button>
+                  <input className="input" placeholder="نام ستون جدید" value={m.name} onChange={e => updateMergeName(i, e.target.value)} />
+                  <button type="button" onClick={() => removeMerge(i)} className="btn-ghost text-red-600 text-sm shrink-0">حذف</button>
                 </div>
                 <div className="mt-3 text-sm text-slate-600">ستون‌های مبدأ:</div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {headers.map(h => (
-                    <button
-                      type="button"
-                      key={h}
-                      onClick={() => toggleMergeFrom(i, h)}
-                      className={`rounded-lg border px-3 py-1 text-xs transition ${
-                        m.from.includes(h)
-                          ? "bg-brand-600 text-white border-brand-600"
-                          : "bg-white border-slate-200 hover:border-slate-300"
-                      }`}
-                    >
+                    <button type="button" key={h} onClick={() => toggleMergeFrom(i, h)}
+                      className={`rounded-lg border px-3 py-1 text-xs transition ${m.from.includes(h) ? "bg-brand-600 text-white border-brand-600" : "bg-white border-slate-200 hover:border-slate-300"}`}>
                       {h}
                     </button>
                   ))}
                 </div>
-                {m.from.length > 0 && (
-                  <div className="mt-2 text-xs text-slate-500">
-                    ادغام: {m.from.join(" + ")} به {m.name || "؟"}
-                  </div>
-                )}
+                {m.from.length > 0 && <div className="mt-2 text-xs text-slate-500">ادغام: {m.from.join(" + ")} به {m.name || "؟"}</div>}
               </div>
             ))}
-            {merges.length === 0 && (
-              <div className="muted text-sm">هنوز ادغامی اضافه نکردی.</div>
-            )}
+            {merges.length === 0 && <div className="muted text-sm">هنوز ادغامی اضافه نکردی.</div>}
           </div>
-          {merges.length > 0 && (
-            <button
-              type="button"
-              onClick={applyMerges}
-              disabled={busyMerge}
-              className="btn-primary mt-4"
-            >
-              {busyMerge ? "در حال اعمال..." : "اعمال ادغام‌ها"}
-            </button>
-          )}
+          {merges.length > 0 && <button type="button" onClick={applyMerges} disabled={busyMerge} className="btn-primary mt-4">{busyMerge ? "در حال اعمال..." : "اعمال ادغام‌ها"}</button>}
         </div>
 
         <div className="card p-6">
           <div className="font-bold mb-3">۳. پیش‌نمایش داده</div>
           {selectedColumns.length === 0 ? (
-            <div className="rounded-xl bg-amber-50 text-amber-800 p-3 text-sm">
-              هنوز هیچ ستونی را به یک فیلد اختصاص ندادی. بعد از انتخاب، ستون‌ها اینجا نمایش داده می‌شوند.
-            </div>
+            <div className="rounded-xl bg-amber-50 text-amber-800 p-3 text-sm">هنوز هیچ ستونی را به یک فیلد اختصاص ندادی. بعد از انتخاب، ستون‌ها اینجا نمایش داده می‌شوند.</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-50">
-                  <tr>
-                    {selectedColumns.map(h => (
-                      <th key={h} className="px-2 py-2 text-right font-medium">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.map((row, i) => (
-                    <tr key={i} className="border-t border-slate-100">
-                      {selectedColumns.map(h => (
-                        <td key={h} className="px-2 py-2 text-right truncate max-w-[140px]">
-                          {String((row.raw as any)?.[h] ?? "")}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
+              <table className="w-full text-xs"><thead className="bg-slate-50"><tr>{selectedColumns.map(h => <th key={h} className="px-2 py-2 text-right font-medium">{h}</th>)}</tr></thead>
+                <tbody>{preview.map((row, i) => <tr key={i} className="border-t border-slate-100">{selectedColumns.map(h => <td key={h} className="px-2 py-2 text-right truncate max-w-[140px]">{String((row.raw as any)?.[h] ?? "")}</td>)}</tr>)}</tbody>
               </table>
             </div>
           )}
         </div>
 
         {msg && <div className="rounded-xl bg-slate-100 p-3 text-sm">{msg}</div>}
-
-        <div className="flex gap-3">
-          <button
-            onClick={saveMapping}
-            disabled={busySave}
-            className="btn-primary px-6 py-3"
-          >
-            {busySave ? "در حال ذخیره..." : "ذخیره نگاشت و مشاهده داشبورد"}
-          </button>
-        </div>
+        <div className="flex gap-3"><button onClick={saveMapping} disabled={busySave} className="btn-primary px-6 py-3">{busySave ? "در حال ذخیره..." : "ذخیره نگاشت و مشاهده داشبورد"}</button></div>
       </div>
     </DndContext>
   );
