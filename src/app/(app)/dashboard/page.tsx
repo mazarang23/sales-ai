@@ -12,7 +12,7 @@ export default async function DashboardHome() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
-  const [uploads, usage, explainUsed, growthUsed, aiWallet] = await Promise.all([
+  const [uploads, usage, aiWallet, explainUsed, growthUsed] = await Promise.all([
     db.upload.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 20 }),
     getAiUsageSummary(user.id, monthStart),
     getAiWalletPresentation(user.id),
