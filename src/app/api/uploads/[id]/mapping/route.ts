@@ -11,69 +11,52 @@ export const maxDuration = 300;
 
 const UPDATE_CONCURRENCY = 25;
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const body = await req.json();
   const fieldMap = body.fieldMap || {};
   const merges: MergeRule[] = body.merges || [];
-  const currency: Currency = body.currency || "toman";
+  const currency: Currency = body.currency || "rial";
 
-  const upload = await db.upload.findFirst({
-    where: { id, userId: user.id },
-    include: { mappings: true }
-  });
-  if (!upload || !upload.mappings) {
-    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-  }
+  const upload = await db.upload.findFirst({ where: { id, userId: user.id }, include: { mappings: true } });
+  if (!upload || !upload.mappings) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
   const rows = await db.dataRow.findMany({ where: { uploadId: upload.id } });
 
-  // The old implementation updated every row one-by-one. For large files that
-  // made the mapping request take a very long time and often prevented the
-  // redirect to the analysis dashboard. Keep database concurrency bounded,
-  // but update rows in parallel batches.
   for (let i = 0; i < rows.length; i += UPDATE_CONCURRENCY) {
     const batch = rows.slice(i, i + UPDATE_CONCURRENCY);
-    await Promise.all(
-      batch.map(async r => {
-        const raw = applyMerges(r.raw as any, merges);
-        const customerVal = fieldMap.customer ? raw[fieldMap.customer] : null;
-        const productVal = fieldMap.product ? raw[fieldMap.product] : null;
-        const amountVal = fieldMap.amount ? raw[fieldMap.amount] : null;
-        const dateVal = fieldMap.date ? raw[fieldMap.date] : null;
-        const orderVal = fieldMap.orderId ? raw[fieldMap.orderId] : null;
+    await Promise.all(batch.map(async r => {
+      const raw = applyMerges(r.raw as any, merges);
+      const customerVal = fieldMap.customer ? raw[fieldMap.customer] : null;
+      const productVal = fieldMap.product ? raw[fieldMap.product] : null;
+      const amountVal = fieldMap.amount ? raw[fieldMap.amount] : null;
+      const dateVal = fieldMap.date ? raw[fieldMap.date] : null;
+      const orderVal = fieldMap.orderId ? raw[fieldMap.orderId] : null;
 
-        let amount = parseAmount(amountVal);
-        if (amount == null) amount = parseAmountText(amountVal);
-        amount = applyCurrency(amount, currency);
+      let amount = parseAmount(amountVal);
+      if (amount == null) amount = parseAmountText(amountVal);
+      amount = applyCurrency(amount, currency);
 
-        await db.dataRow.update({
-          where: { id: r.id },
-          data: {
-            raw,
-            customer: customerVal != null ? String(customerVal) : null,
-            product: productVal != null ? String(productVal) : null,
-            amount,
-            date: parseDate(dateVal),
-            orderId: orderVal != null ? String(orderVal) : null
-          }
-        });
-      })
-    );
+      await db.dataRow.update({
+        where: { id: r.id },
+        data: {
+          raw,
+          customer: customerVal != null ? String(customerVal) : null,
+          product: productVal != null ? String(productVal) : null,
+          amount,
+          date: parseDate(dateVal),
+          orderId: orderVal != null ? String(orderVal) : null
+        }
+      });
+    }));
   }
 
   const originalHeaders = (upload.mappings.headers as string[]) || [];
   const existingMerged = (upload.mappings.mergedColumns as any[]) || [];
-  const baseHeaders = originalHeaders.filter(
-    h => !existingMerged.some((m: any) => m.name === h)
-  );
+  const baseHeaders = originalHeaders.filter(h => !existingMerged.some((m: any) => m.name === h));
   const mergeNames = merges.map(m => m.name).filter(Boolean);
   const finalHeaders = [...baseHeaders, ...mergeNames];
 
@@ -81,10 +64,7 @@ export async function POST(
     where: { uploadId: upload.id },
     data: { fieldMap, mergedColumns: merges as any, headers: finalHeaders }
   });
-
-  await db.insight.deleteMany({
-    where: { uploadId: upload.id, kind: "cohort" }
-  });
+  await db.insight.deleteMany({ where: { uploadId: upload.id, kind: "cohort" } });
 
   return NextResponse.json({ ok: true, updated: rows.length, headers: finalHeaders, currency });
 }
