@@ -17,11 +17,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.26.0
+          run_install: false
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Generate Prisma Client
@@ -32,5 +32,4 @@ jobs:
         run: pnpm build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
-          # CI verifies compilation; no production credentials or database writes are needed.
           DATABASE_URL: "postgresql://ci:ci@127.0.0.1:5432/ci?schema=public"
