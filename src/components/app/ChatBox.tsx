@@ -65,19 +65,19 @@ export function ChatBox({
   // رنگ‌ها بر اساس نقش
   const myBubbleClass =
     role === "consultant"
-      ? "bg-emerald-100 text-emerald-900 border border-emerald-200 ml-auto"
-      : "bg-blue-100 text-blue-900 border border-blue-200 ml-auto";
+      ? "bg-emerald-600 text-white border border-emerald-700 ml-auto rounded-tr-md"
+      : "bg-brand-600 text-white border border-brand-700 ml-auto rounded-tr-md";
 
   const otherBubbleClass =
     role === "consultant"
-      ? "bg-blue-100 text-blue-900 border border-blue-200 mr-auto"
-      : "bg-emerald-100 text-emerald-900 border border-emerald-200 mr-auto";
+      ? "bg-white text-slate-800 border border-slate-200 mr-auto rounded-tl-md"
+      : "bg-white text-slate-800 border border-slate-200 mr-auto rounded-tl-md";
 
   return (
     <div className="card p-4 space-y-3">
       <div
         ref={scrollRef}
-        className="max-h-80 overflow-y-auto space-y-2 rounded-xl bg-slate-50 p-3"
+        className="max-h-96 overflow-y-auto space-y-3 rounded-2xl border border-slate-100 bg-gradient-to-b from-slate-50 to-white p-4"
       >
         {messages.length === 0 && (
           <div className="muted text-sm text-center py-4">هنوز پیامی نیست.</div>
@@ -87,7 +87,7 @@ export function ChatBox({
           return (
             <div
               key={m.id}
-              className={`rounded-xl p-2 text-sm leading-6 max-w-[85%] ${
+              className={`rounded-2xl p-3 text-sm leading-7 max-w-[88%] shadow-sm ${
                 mine ? myBubbleClass : otherBubbleClass
               }`}
             >
@@ -97,9 +97,9 @@ export function ChatBox({
         })}
       </div>
       {err && <div className="text-xs text-red-600">{err}</div>}
-      <div className="flex gap-2">
+      <div className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
         <input
-          className="input flex-1"
+          className="input flex-1 border-0 shadow-none focus:ring-0"
           value={text}
           onChange={e => setText(e.target.value)}
           placeholder={disabled ? "چت غیرفعال است" : "پیامت را بنویس..."}
@@ -111,7 +111,7 @@ export function ChatBox({
           disabled={disabled || busy || !text.trim()}
           className="btn-primary"
         >
-          {busy ? "..." : "ارسال"}
+          {busy ? "در حال ارسال…" : "ارسال پیام"}
         </button>
       </div>
     </div>
