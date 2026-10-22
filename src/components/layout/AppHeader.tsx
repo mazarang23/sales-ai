@@ -12,69 +12,15 @@ type User = {
 };
 type Consultant = { id: string; status: string; displayName: string } | null;
 
-const PLAN_LABELS: Record<string, string> = {
-  free: "رایگان",
-  pro: "رشد",
-  business: "حرفه‌ای"
-};
+const PLAN_LABELS: Record<string, string> = { free: "رایگان", pro: "رشد", business: "حرفه‌ای" };
 
 export async function AppHeader() {
   const currentUser = await getCurrentUser();
   const user: User | null = currentUser
-    ? {
-        id: currentUser.id,
-        phone: currentUser.phone,
-        name: currentUser.name,
-        role: currentUser.role,
-        plan: currentUser.plan
-      }
+    ? { id: currentUser.id, phone: currentUser.phone || "", name: currentUser.name, role: currentUser.role, plan: currentUser.plan }
     : null;
-
   const consultant: Consultant = user
-    ? await db.consultant.findUnique({
-        where: { userId: user.id },
-        select: { id: true, status: true, displayName: true }
-      })
+    ? await db.consultant.findUnique({ where: { userId: user.id }, select: { id: true, status: true, displayName: true } })
     : null;
-
-  return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/90 backdrop-blur">
-      <div className="container-tight flex h-14 items-center justify-between">
-        <Link href="/" className="font-black">فروشیار AI</Link>
-
-        <div className="flex items-center gap-3 text-sm">
-          {user ? (
-            <>
-              {user.plan !== "free" && (
-                <span className="hidden sm:inline-flex rounded-lg bg-emerald-50 text-emerald-700 px-2 py-1 text-xs">
-                  پلن {PLAN_LABELS[user.plan] || user.plan}
-                </span>
-              )}
-              <Link href="/dashboard" className="text-slate-600 hover:text-brand-600">داشبورد</Link>
-              <Link href="/upload" className="text-slate-600 hover:text-brand-600">آپلود</Link>
-              <Link href="/bookings" className="text-slate-600 hover:text-brand-600">جلسات</Link>
-              <Link href="/account" className="text-slate-600 hover:text-brand-600 font-medium">حساب من</Link>
-              {consultant && (
-                <Link href="/consultant/dashboard" className="text-emerald-700 font-medium">
-                  پنل مشاور
-                </Link>
-              )}
-              {user.role === "ADMIN" && (
-                <Link href="/admin" className="text-brand-600">ادمین</Link>
-              )}
-              <NotificationBell />
-              <form action="/api/auth/logout" method="post">
-                <button className="btn-ghost text-sm text-red-600">خروج</button>
-              </form>
-            </>
-          ) : (
-            <>
-              <Link href="/login" className="btn-ghost text-sm">ورود</Link>
-              <Link href="/register" className="btn-primary text-sm">ثبت‌نام</Link>
-            </>
-          )}
-        </div>
-      </div>
-    </header>
-  );
+  return <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/90 backdrop-blur"><div className="container-tight flex h-14 items-center justify-between"><Link href="/" className="font-black">فروشیار AI</Link><div className="flex items-center gap-3 text-sm">{user ? <><>{user.plan !== "free" && <span className="hidden sm:inline-flex rounded-lg bg-emerald-50 text-emerald-700 px-2 py-1 text-xs">پلن {PLAN_LABELS[user.plan] || user.plan}</span>}</><Link href="/dashboard" className="text-slate-600 hover:text-brand-600">داشبورد</Link><Link href="/upload" className="text-slate-600 hover:text-brand-600">آپلود</Link><Link href="/bookings" className="text-slate-600 hover:text-brand-600">جلسات</Link><Link href="/account" className="text-slate-600 hover:text-brand-600 font-medium">حساب من</Link>{consultant && <Link href="/consultant/dashboard" className="text-emerald-700 font-medium">پنل مشاور</Link>}{user.role === "ADMIN" && <Link href="/admin" className="text-brand-600">ادمین</Link>}<NotificationBell /><form action="/api/auth/logout" method="post"><button className="btn-ghost text-sm text-red-600">خروج</button></form></> : <><Link href="/login" className="btn-ghost text-sm">ورود</Link><Link href="/register" className="btn-primary text-sm">ثبت‌نام</Link></>}</div></div></header>;
 }
