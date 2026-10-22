@@ -3,6 +3,9 @@ const nextConfig = {
   output: "standalone",
 
   experimental: {
+    // Limit build parallelism for constrained Docker builders.
+    cpus: 1,
+    workerThreads: false,
     serverActions: {
       bodySizeLimit: "25mb",
     },
