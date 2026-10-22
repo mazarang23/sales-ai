@@ -65,6 +65,7 @@ model Session {
 model Consultant {
   id            String    @id @default(cuid())
   phone         String?   @unique
+  phoneVerifiedAt DateTime?
   email         String?   @unique
   googleSub     String?   @unique
   password      String?
