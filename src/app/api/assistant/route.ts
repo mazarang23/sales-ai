@@ -29,13 +29,12 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser(); if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
     const limit = getAiQuestionsLimit(user.plan); const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
-    const usedThisMonth = await db.chatMessage.count({ where: { userId: user.id, role: "user", createdAt: { gte: monthStart } });
+    const usedThisMonth = await db.chatMessage.count({ where: { userId: user.id, role: "user", createdAt: { gte: monthStart } } });
     if (usedThisMonth >= limit) return NextResponse.json({ error: "LIMIT_REACHED", message: `سقف سوالات پلن شما (${limit} در ماه) پر شده است.` }, { status: 403 });
     const { question, uploadId } = await req.json(); const cleanQuestion = String(question || "").trim(); const cleanUploadId = String(uploadId || "").trim();
     if (cleanQuestion.length < 3) return NextResponse.json({ error: "سوال کوتاه است" }, { status: 400 });
     if (!cleanUploadId) return NextResponse.json({ error: "برای پاسخ دقیق، سوال باید به یک فایل تحلیل‌شده متصل باشد." }, { status: 400 });
     if (!rateLimit(`assistant:${user.id}`, 20, 60 * 1000)) return NextResponse.json({ error: "تلاش زیاد. یک دقیقه صبر کنید." }, { status: 429 });
-
     const upload = await db.upload.findFirst({ where: { id: cleanUploadId, userId: user.id }, include: { mappings: true } });
     if (!upload) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
     const rows = await db.dataRow.findMany({ where: { uploadId: cleanUploadId }, take: 50000, orderBy: { date: "asc" } });
