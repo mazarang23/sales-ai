@@ -2,8 +2,8 @@
 import { useMemo, useState } from "react";
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
@@ -14,7 +14,7 @@ import { Period, periodKey, periodLabel } from "@/lib/analytics/periods";
 type Row = { date: string | null; amount: number };
 
 export function SalesChart({ rows }: { rows: Row[] }) {
-  const [period, setPeriod] = useState<Period>("day");
+  const [period, setPeriod] = useState<Period>("month");
 
   const series = useMemo(() => {
     const map = new Map<string, number>();
@@ -53,18 +53,18 @@ export function SalesChart({ rows }: { rows: Row[] }) {
           ))}
         </div>
       </div>
-      <div className="h-64">
+      <div className="h-72 rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50/70 p-2 sm:p-4">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={series}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} />
+          <BarChart data={series} barCategoryGap="22%">
+            <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={18} />
+            <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={48} tickFormatter={(v: number) => new Intl.NumberFormat("fa-IR", { notation: "compact", maximumFractionDigits: 1 }).format(v)} />
             <Tooltip
-              formatter={(v: any) => new Intl.NumberFormat("fa-IR").format(v)}
-              labelFormatter={(l: any) => l}
+              formatter={(v: any) => [new Intl.NumberFormat("fa-IR").format(Number(v)), "مبلغ فروش"]}
+              labelFormatter={(l: any) => "دوره: " + l}
             />
-            <Line type="monotone" dataKey="amount" stroke="#2563eb" strokeWidth={2.5} dot={false} />
-          </LineChart>
+            <Bar dataKey="amount" fill="#3b82f6" radius={[5, 5, 0, 0]} maxBarSize={42} />
+          </BarChart>
         </ResponsiveContainer>
       </div>
     </div>
