@@ -1,26 +1,24 @@
 import { db } from "@/lib/db";
 
 const DEFAULTS: Record<string, string> = {
-  "hero.title": "داده‌ات را تحلیل کن، با مشاور رشد ببر جلو",
+  "hero.title": "از فایل فروش تا یک تصمیم روشن برای رشد",
   "hero.subtitle":
-    "فایل اکسل فروش را آپلود کن، تحلیل هوشمند بگیر، و اگر خواستی با مشاورین خبره‌ی رشد، قدم‌به‌قدم فروشگاهت را بزرگ کن.",
-  "hero.cta": "شروع تحلیل رایگان",
-  "features.title": "تحلیل + مشاوره، در یک پلتفرم",
+    "فایل فروش‌ات را آپلود کن؛ فروش‌یار مشتریان ارزشمند، الگوهای خرید و فرصت‌های رشد را از دل داده‌ها بیرون می‌کشد و به تو می‌گوید قدم بعدی چه می‌تواند باشد.",
+  "hero.cta": "تحلیل رایگان فروش من",
+  "features.title": "داده را بفهم؛ بعد تصمیم بگیر",
   "features.subtitle":
-    "از داده‌ی خام اکسل تا اقدام عملی، بدون فرمول و بدون پیچیدگی.",
-  "pricing.title": "تعرفه شفاف",
-  "pricing.subtitle": "تحلیل اولیه رایگان. مشاوره و برنامه رشد، وقتی ارزشش را دیدی.",
+    "به‌جای خیره شدن به جدول‌های فروش، الگوی مشتری، بازگشت خرید و فرصت‌های رشد را در یک داشبورد ساده ببین و در صورت نیاز از مشاور رشد کمک بگیر.",
+  "pricing.title": "اول ارزش را ببین، بعد هزینه کن",
+  "pricing.subtitle": "شروع تحلیل رایگان است؛ برای ظرفیت بیشتر و استفاده گسترده‌تر از AI، پلن مناسب کسب‌وکارت را انتخاب کن.",
   "footer.tagline":
-    "تحلیل هوشمند فروش + مشاوره تخصصی، برای فروشگاه‌های ایرانی."
+    "فروش‌یار؛ تحلیل فروش، شناخت مشتری و تصمیم‌سازی برای رشد کسب‌وکارهای ایرانی."
 };
 
 export async function getContent(
   keys: string[]
 ): Promise<Record<string, string>> {
   try {
-    const items = await db.siteContent.findMany({
-      where: { key: { in: keys } }
-    });
+    const items = await db.siteContent.findMany({ where: { key: { in: keys } } });
     const map: Record<string, string> = {};
     for (const k of keys) map[k] = DEFAULTS[k] || "";
     for (const i of items) map[i.key] = i.value;
