@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function PhoneVerificationForm({ kind }: { kind: "customer" | "consultant" }) {
+export function PhoneVerificationForm({ kind, allowUnverified = true }: { kind: "customer" | "consultant"; allowUnverified?: boolean }) {
   const router = useRouter();
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -97,7 +97,7 @@ export function PhoneVerificationForm({ kind }: { kind: "customer" | "consultant
       <div className="flex flex-col gap-2 sm:flex-row">
         {!sent ? <>
           <button type="button" onClick={send} disabled={busy} className="btn-primary flex-1">{busy ? "در حال ارسال…" : "ارسال کد تأیید"}</button>
-          <button type="button" onClick={continueWithoutVerification} disabled={busy} className="btn-ghost flex-1">{busy ? "در حال ذخیره…" : "فعلاً بدون تأیید ادامه می‌دهم"}</button>
+          {allowUnverified && <button type="button" onClick={continueWithoutVerification} disabled={busy} className="btn-ghost flex-1">{busy ? "در حال ذخیره…" : "فعلاً بدون تأیید ادامه می‌دهم"}</button>}
         </> : <>
           <button type="submit" disabled={busy} className="btn-primary flex-1">{busy ? "در حال بررسی…" : "تأیید شماره و ادامه"}</button>
           <button type="button" onClick={send} disabled={busy} className="btn-ghost">{busy ? "در حال ارسال…" : "ارسال دوباره"}</button>
