@@ -2,62 +2,26 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function PlanPaymentForm({
-  plan,
-  amount,
-  info
-}: {
-  plan: string;
-  amount: number;
-  info: { cardNumber: string; shaba: string; holderName: string; bankName: string };
-}) {
+export function PlanPaymentForm({ plan, amount, info }: { plan: string; amount: number; info: { cardNumber: string; shaba: string; holderName: string; bankName: string } }) {
   const router = useRouter();
   const [reference, setReference] = useState("");
+  const [proof, setProof] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-
   async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setMsg(null);
+    e.preventDefault(); setBusy(true); setMsg(null);
     try {
-      const r = await fetch("/api/subscription/payment-manual", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, reference })
-      });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || "خطا");
-      setMsg("اطلاعات ثبت شد. منتظر تایید ادمین بمان.");
-      router.refresh();
-    } catch (e) {
-      setMsg(e instanceof Error ? e.message : "خطا");
-    } finally {
-      setBusy(false);
-    }
+      const fd = new FormData(); fd.append("plan", plan); fd.append("reference", reference); if (proof) fd.append("proof", proof);
+      const r = await fetch("/api/subscription/payment-manual", { method: "POST", body: fd }); const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "خطا"); setMsg("اطلاعات پرداخت و رسید ثبت شد. پس از بررسی ادمین، پلن فعال می‌شود."); setReference(""); setProof(null); router.refresh();
+    } catch (e) { setMsg(e instanceof Error ? e.message : "خطا"); } finally { setBusy(false); }
   }
-
-  return (
-    <form onSubmit={submit} className="space-y-4">
-      <div className="card p-6 space-y-3">
-        <p className="text-sm leading-6">
-          مبلغ <span className="font-medium">{amount.toLocaleString("fa-IR")} تومان</span> را
-          به یکی از روش‌های زیر واریز کنید:
-        </p>
-        <div className="rounded-xl bg-slate-50 p-4 space-y-2 text-sm" dir="ltr">
-          <div className="flex justify-between"><span className="text-slate-500 text-xs">شماره کارت</span><span className="font-mono">{info.cardNumber}</span></div>
-          <div className="flex justify-between"><span className="text-slate-500 text-xs">شماره شبا</span><span className="font-mono text-sm">{info.shaba}</span></div>
-          <div className="flex justify-between"><span className="text-slate-500 text-xs">به نام</span><span>{info.holderName}</span></div>
-        </div>
-        <div>
-          <label className="text-sm font-medium">شماره پیگیری</label>
-          <input className="input mt-1 text-left" dir="ltr" value={reference} onChange={e => setReference(e.target.value)} required minLength={3} />
-        </div>
-        {msg && <div className="rounded-xl bg-slate-100 p-3 text-sm">{msg}</div>}
-        <button disabled={busy} className="btn-primary w-full py-3">
-          {busy ? "..." : "ثبت اطلاعات پرداخت"}
-        </button>
-      </div>
-    </form>
-  );
+  return <form onSubmit={submit} className="space-y-4"><div className="card p-6 space-y-3">
+    <p className="text-sm leading-6">مبلغ <span className="font-medium">{amount.toLocaleString("fa-IR")} تومان</span> را واریز کنید:</p>
+    <div className="rounded-xl bg-slate-50 p-4 space-y-2 text-sm" dir="ltr"><div className="flex justify-between"><span className="text-slate-500 text-xs">شماره کارت</span><span className="font-mono">{info.cardNumber}</span></div><div className="flex justify-between"><span className="text-slate-500 text-xs">شماره شبا</span><span className="font-mono text-sm">{info.shaba}</span></div><div className="flex justify-between"><span className="text-slate-500 text-xs">به نام</span><span>{info.holderName}</span></div><div className="flex justify-between"><span className="text-slate-500 text-xs">بانک</span><span>{info.bankName}</span></div></div>
+    <div><label className="text-sm font-medium">شماره پیگیری</label><input className="input mt-1 text-left" dir="ltr" value={reference} onChange={e => setReference(e.target.value)} required minLength={3} /></div>
+    <div><label className="text-sm font-medium">رسید واریز (اختیاری)</label><input type="file" accept="image/*,application/pdf" className="input mt-1" onChange={e => setProof(e.target.files?.[0] || null)} /><p className="text-xs text-slate-500 mt-1">تصویر یا PDF، حداکثر ۵ مگابایت</p></div>
+    {msg && <div className="rounded-xl bg-slate-100 p-3 text-sm">{msg}</div>}
+    <button disabled={busy} className="btn-primary w-full py-3">{busy ? "در حال ثبت..." : "ثبت پرداخت و رسید"}</button>
+  </div></form>;
 }
