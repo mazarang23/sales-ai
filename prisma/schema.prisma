@@ -10,7 +10,9 @@ datasource db {
 
 model User {
   id               String         @id @default(cuid())
-  phone            String         @unique
+  phone            String?        @unique
+  email            String?        @unique
+  googleSub        String?        @unique
   name             String?
   password         String?
   industry         String?
@@ -61,14 +63,16 @@ model Session {
 
 model Consultant {
   id            String    @id @default(cuid())
-  phone         String    @unique
-  password      String
+  phone         String?   @unique
+  email         String?   @unique
+  googleSub     String?   @unique
+  password      String?
   displayName   String
-  bio           String
+  bio           String    @default("")
   photoUrl      String?
   linkedin      String?
   instagram     String?
-  hourlyRate    Int
+  hourlyRate    Int       @default(0)
   status        String    @default("pending")
   userId        String?   @unique
   createdAt     DateTime  @default(now())
