@@ -74,7 +74,7 @@ export function UploadForm() {
         setBusy(false);
         return;
       }
-      router.push(`/dashboard/${j.uploadId}`);
+      router.push(j.appended ? `/dashboard/${j.uploadId}` : `/mapping/${j.uploadId}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "خطا");
       setBusy(false);
