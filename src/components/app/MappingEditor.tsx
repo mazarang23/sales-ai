@@ -21,6 +21,16 @@ const FIELDS = [
 ];
 
 type Merge = { name: string; from: string[] };
+type ProgressState = { processed: number; total: number; percent: number; etaMs: number | null };
+
+function formatEta(ms: number | null) {
+  if (ms == null) return "در حال محاسبه زمان باقی‌مانده…";
+  if (ms < 1000) return "تقریباً تمام شد";
+  const seconds = Math.ceil(ms / 1000);
+  if (seconds < 60) return `${seconds} ثانیه باقی مانده`;
+  const minutes = Math.ceil(seconds / 60);
+  return `${minutes} دقیقه باقی مانده`;
+}
 
 export function MappingEditor({
   uploadId,
@@ -44,6 +54,7 @@ export function MappingEditor({
   const [currency, setCurrency] = useState<Currency>(initialCurrency || "rial");
   const [busyMerge, setBusyMerge] = useState(false);
   const [busySave, setBusySave] = useState(false);
+  const [progress, setProgress] = useState<ProgressState | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -130,6 +141,7 @@ export function MappingEditor({
 
   async function saveMapping() {
     setBusySave(true);
+    setProgress({ processed: 0, total: 0, percent: 0, etaMs: null });
     setMsg(null);
     try {
       const validMerges = merges.filter(m => m.name.trim() && m.from.length > 0);
@@ -138,18 +150,72 @@ export function MappingEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fieldMap, merges: validMerges, currency })
       });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || "خطا");
+      if (!r.ok || !r.body) {
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j.error || "خطا در شروع تحلیل");
+      }
+
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let completed = false;
+
+      const handleEvent = (line: string) => {
+        if (!line.trim()) return;
+        const event = JSON.parse(line) as ProgressState & { type: string; updated?: number; headers?: string[]; error?: string };
+        if (event.type === "progress") {
+          setProgress({ processed: event.processed, total: event.total, percent: event.percent, etaMs: event.etaMs });
+        } else if (event.type === "error") {
+          throw new Error(event.error || "خطا در ذخیره نگاشت");
+        } else if (event.type === "done") {
+          completed = true;
+        }
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (value) {
+          buffer += decoder.decode(value, { stream: !done });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) handleEvent(line);
+        }
+        if (done) break;
+      }
+      if (buffer.trim()) handleEvent(buffer);
+      if (!completed) throw new Error("فرآیند تحلیل کامل نشد");
+      setProgress(prev => prev ? { ...prev, percent: 100, processed: prev.total } : { processed: 0, total: 0, percent: 100, etaMs: 0 });
       router.push(`/dashboard/${uploadId}`);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "خطا");
       setBusySave(false);
+      setProgress(null);
     }
   }
+
+  const showProgress = busySave && progress;
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="space-y-6">
+        {showProgress && (
+          <div className="card p-6 border-brand-200 bg-brand-50/40" aria-live="polite">
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <div>
+                <div className="font-bold">در حال ذخیره نگاشت و آماده‌سازی تحلیل</div>
+                <div className="text-xs text-slate-600 mt-1">
+                  {progress.total > 0 ? `${progress.processed.toLocaleString("fa-IR")} از ${progress.total.toLocaleString("fa-IR")} ردیف پردازش شده` : "در حال آماده‌سازی ردیف‌ها…"}
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-brand-700 tabular-nums">{progress.percent.toLocaleString("fa-IR", { maximumFractionDigits: 1 })}%</div>
+            </div>
+            <div className="h-3 overflow-hidden rounded-full bg-white border border-brand-100">
+              <div className="h-full rounded-full bg-brand-600 transition-all duration-300" style={{ width: `${Math.min(100, Math.max(0, progress.percent))}%` }} />
+            </div>
+            <div className="mt-2 text-xs text-slate-500 text-center">{formatEta(progress.etaMs)}</div>
+          </div>
+        )}
+
         <div className="card p-6">
           <div className="font-bold mb-1">۱. نگاشت ستون‌ها</div>
           <p className="muted text-sm mb-4">ستون‌ها را از لیست سمت راست به فیلدهای سمت چپ بکش. یا روی فیلد کلیک کن و از dropdown انتخاب کن.</p>
@@ -233,7 +299,7 @@ export function MappingEditor({
         </div>
 
         {msg && <div className="rounded-xl bg-slate-100 p-3 text-sm">{msg}</div>}
-        <div className="flex gap-3"><button onClick={saveMapping} disabled={busySave} className="btn-primary px-6 py-3">{busySave ? "در حال ذخیره..." : "ذخیره نگاشت و مشاهده داشبورد"}</button></div>
+        <div className="flex gap-3"><button onClick={saveMapping} disabled={busySave} className="btn-primary px-6 py-3">{busySave ? "در حال پردازش…" : "ذخیره نگاشت و مشاهده داشبورد"}</button></div>
       </div>
     </DndContext>
   );
