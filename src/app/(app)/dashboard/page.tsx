@@ -5,16 +5,17 @@ import Link from "next/link";
 import { formatNum, formatDate } from "@/lib/utils";
 import { AppNav } from "@/components/app/AppNav";
 import { getAiQuestionsLimit, getExplainLimit, getGrowthPlansLimit, getPlan, PLANS } from "@/lib/plans";
-import { getAiUsageSummary } from "@/lib/ai/usage";
+import { getAiUsageSummary, getAiWalletPresentation } from "@/lib/ai/usage";
 
 export const dynamic = "force-dynamic";
 export default async function DashboardHome() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
-  const [uploads, usage, explainUsed, growthUsed] = await Promise.all([
+  const [uploads, usage, explainUsed, growthUsed, aiWallet] = await Promise.all([
     db.upload.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 20 }),
     getAiUsageSummary(user.id, monthStart),
+    getAiWalletPresentation(user.id),
     db.insight.count({ where: { kind: "explain", createdAt: { gte: monthStart }, upload: { userId: user.id } } }),
     db.recommendation.count({ where: { createdAt: { gte: monthStart }, upload: { userId: user.id } } })
   ]);
@@ -26,7 +27,7 @@ export default async function DashboardHome() {
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between gap-3 flex-wrap"><div><div className="text-xs text-slate-500">پلن فعلی</div><div className="text-lg font-black">{plan.label}</div></div><div className="text-sm text-slate-600">مصرف AI این ماه: {formatNum(usage.totalTokens)} توکن</div></div>
         <div className="grid gap-3 sm:grid-cols-3 mt-4"><Usage label="سوال از دستیار" used={user.aiQuestionsUsed} max={limits.ai} /><Usage label="برنامه رشد" used={growthUsed} max={limits.growth} /><Usage label="توضیح بیشتر" used={explainUsed} max={limits.explain} /></div>
-        {user.plan !== "free" && <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm"><div className="flex justify-between gap-3"><span>اعتبار هوش مصنوعی</span><strong>{formatNum(user.walletBalance)} تومان</strong></div><div className="text-xs text-slate-500 mt-1">اعتبار هنگام پرداخت پلن به اندازه دو سوم مبلغ پلن ایجاد می‌شود و هزینه AI بر اساس مصرف واقعی توکن از آن کم می‌شود.</div></div>}
+        {user.plan !== "free" && <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm"><div className="flex justify-between gap-3"><span>اعتبار هوش مصنوعی</span><strong>{formatNum(aiWallet.estimatedTokens)} توکن معادل</strong></div><div className="text-xs text-slate-500 mt-1">این عدد ظرفیت تقریبی باقی‌مانده است؛ هزینه هر درخواست بر اساس مصرف واقعی محاسبه می‌شود.</div></div>}
         <div className="mt-3 grid gap-2 sm:grid-cols-3 text-xs text-slate-500"><div>{formatNum(usage.requests)} درخواست</div><div>{formatNum(usage.promptTokens)} ورودی / {formatNum(usage.completionTokens)} خروجی</div><div>هزینه ثبت‌شده: {formatNum(Math.round(usage.costToman))} تومان</div></div>
         <div className="text-xs text-slate-400 mt-2">نرخ تبدیل دلار برای هر مصرف در زمان ثبت هزینه ذخیره می‌شود؛ بنابراین تغییرات بعدی نرخ، سوابق قبلی را جابه‌جا نمی‌کند.</div>
       </div>
