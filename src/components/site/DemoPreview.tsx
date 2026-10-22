@@ -1,47 +1,11 @@
 import Link from "next/link";
-
-export function DemoPreview() {
-  return (
-    <section id="demo" className="py-20">
-      <div className="container-tight grid gap-10 md:grid-cols-2 md:items-center">
-        <div>
-          <h2 className="h2">دمو را ببین، بعد تصمیم بگیر</h2>
-          <p className="muted mt-4 leading-7">
-            با یک نمونه‌ی واقعی از داشبورد، بدون ثبت‌نام آشنا شو.
-            اگر به کارت آمد، شماره‌ات را بده و فایل خودت را آپلود کن.
-          </p>
-          <div className="mt-6 flex gap-3">
-            <Link href="/demo" className="btn-primary px-5 py-3">
-              مشاهده دموی کامل
-            </Link>
-            <Link href="/register" className="btn-ghost px-5 py-3">
-              شروع تحلیل رایگان
-            </Link>
-          </div>
-        </div>
-        <div className="card overflow-hidden">
-          <div className="bg-slate-900 px-4 py-2 text-xs text-slate-300">preview.dashboard</div>
-          <div className="p-5">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-slate-50 p-3">
-                <div className="text-xs text-slate-500">روند فروش</div>
-                <div className="mt-2 h-20 rounded-lg bg-gradient-to-tr from-brand-200 to-purple-200" />
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3">
-                <div className="text-xs text-slate-500">پرفروش‌ها</div>
-                <div className="mt-2 space-y-1.5">
-                  <div className="h-2 rounded bg-brand-300 w-4/5" />
-                  <div className="h-2 rounded bg-brand-300 w-3/5" />
-                  <div className="h-2 rounded bg-brand-300 w-2/5" />
-                </div>
-              </div>
-            </div>
-            <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
-              پیشنهاد AI: بازگرداندن ۲۰ مشتری قدیمی می‌تواند حدود ۲۴ میلیون تومان به فروش اضافه کند.
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+function MiniBars(){const heights=[28,44,36,61,50,74,62,88,77,96];return <div className="flex h-24 items-end gap-1.5 border-b border-slate-200 px-1">{heights.map((h,i)=><div key={i} className="flex-1 rounded-t bg-brand-500/80" style={{height:h+"%"}} />)}</div>}
+export function DemoPreview(){
+ return <section id="demo" className="bg-slate-50/70 py-16 sm:py-20"><div className="container-tight grid gap-10 md:grid-cols-2 md:items-center">
+ <div><div className="text-xs font-semibold text-brand-700">پیش‌نمایش محصول</div><h2 className="h2 mt-2">قبل از ثبت‌نام، شکل تحلیل را ببین</h2><p className="muted mt-4 leading-7">یک نمونه‌ی نمایشی از گزارش فروش، مشتریان و بازگشت آن‌ها؛ بدون ادعای نتیجه برای کسب‌وکار شما. بعد از بارگذاری فایل، گزارش بر اساس داده‌های واقعی فروشگاهت ساخته می‌شود.</p><div className="mt-6 flex flex-wrap gap-3"><Link href="/demo" className="btn-primary px-5 py-3">دیدن گزارش نمونه</Link><Link href="/register" className="btn-ghost px-5 py-3">تحلیل فایل خودم</Link></div><p className="mt-3 text-xs text-slate-500">اعداد و نمودارهای این پیش‌نمایش صرفاً نمونه‌اند.</p></div>
+ <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
+ <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><div><div className="text-sm font-bold text-slate-900">گزارش فروش</div><div className="text-[11px] text-slate-500">نمونه‌ی نمایشی</div></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">پیش‌نمایش</span></div>
+ <div className="grid grid-cols-3 gap-2 p-3 sm:gap-3 sm:p-4">{[["فروش دوره","۱۲۸ م.ت"],["سفارش‌ها","۴۸۶"],["میانگین سفارش","۲۶۳ ه.ت"]].map(([label,value])=><div key={label} className="rounded-xl bg-slate-50 p-3"><div className="text-[10px] text-slate-500">{label}</div><div className="mt-1 text-sm font-black text-slate-900 sm:text-base">{value}</div></div>)}</div>
+ <div className="px-4 pb-4"><div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold text-slate-800">روند فروش ماهانه</span><span className="text-[10px] text-slate-400">۶ ماه اخیر</span></div><MiniBars/><div className="mt-4 grid grid-cols-2 gap-3"><div className="rounded-xl border border-slate-100 p-3"><div className="text-xs font-bold">بازگشت مشتریان</div><div className="mt-2 flex h-10 items-end gap-1">{[85,68,55,38,26,18].map((h,i)=><div key={i} className="flex-1 rounded-sm bg-emerald-400/80" style={{height:h+"%"}} />)}</div><div className="mt-2 text-[10px] text-slate-500">مقایسه دوره‌های خرید</div></div><div className="rounded-xl border border-slate-100 p-3"><div className="text-xs font-bold">اقدام پیشنهادی</div><div className="mt-2 text-xs leading-5 text-slate-600">مشتریان غیرفعال را شناسایی کن و برای بازگشت آن‌ها کمپین هدفمند بساز.</div></div></div></div></div>
+ </div></section>
 }
