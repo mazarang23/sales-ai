@@ -6,7 +6,9 @@ import { getCurrentUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-const STORAGE_DIR = process.env.STORAGE_DIR || "./.storage";
+const STORAGE_DIR = path.resolve(
+  process.env.STORAGE_DIR || path.join(process.cwd(), ".storage")
+);
 
 export async function GET(
   req: NextRequest,
@@ -19,7 +21,6 @@ export async function GET(
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  // ادمین همه فایل‌ها را می‌بیند، کاربر عادی فقط فایل خودش
   const where = user.role === "ADMIN"
     ? { id }
     : { id, userId: user.id };
@@ -37,7 +38,7 @@ export async function GET(
     );
   }
 
-  const filePath = path.join(STORAGE_DIR, upload.fileKey);
+  const filePath = path.join(STORAGE_DIR, path.basename(upload.fileKey));
 
   try {
     const data = await fs.readFile(filePath);
@@ -47,11 +48,14 @@ export async function GET(
         "Content-Disposition": `attachment; filename="${encodeURIComponent(upload.fileName)}"`
       }
     });
-  } catch (e) {
+  } catch (e: any) {
     console.error("download error:", e);
-    return NextResponse.json(
-      { error: "فایل روی سرور پیدا نشد" },
-      { status: 404 }
-    );
+    if (e?.code === "ENOENT") {
+      return NextResponse.json(
+        { error: "فایل روی فضای ذخیره‌سازی پیدا نشد. برای فایل‌های قدیمی، فایل باید دوباره آپلود شود." },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json({ error: "خطا در دریافت فایل" }, { status: 500 });
   }
 }
