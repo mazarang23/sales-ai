@@ -1,0 +1,25 @@
+name: Daily Blog Publish
+on:
+  schedule:
+    - cron: "30 4 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish one original Persian article
+        env:
+          CONTENT_PUBLISH_TOKEN: ${{ secrets.CONTENT_PUBLISH_TOKEN }}
+          SITE_URL: https://foorooshyaar.ir
+        run: |
+          set -euo pipefail
+          if [ -z "${CONTENT_PUBLISH_TOKEN:-}" ]; then
+            echo "Missing GitHub secret CONTENT_PUBLISH_TOKEN"; exit 1
+          fi
+          curl --fail-with-body --silent --show-error \
+            -X POST "${SITE_URL}/api/automation/publish-blog" \
+            -H "Authorization: Bearer ${CONTENT_PUBLISH_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}'

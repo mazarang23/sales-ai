@@ -1,0 +1,5 @@
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+import { PhoneVerificationForm } from "@/components/app/PhoneVerificationForm";
+export const dynamic = "force-dynamic";
+export default async function CompleteProfilePage(){const user=await getCurrentUser();if(!user)redirect("/login");if(user.phone)redirect(user.role==="ADMIN"?"/admin":"/dashboard");return <main className="container-tight mx-auto max-w-lg py-14" dir="rtl"><div className="mb-6"><div className="text-xs font-semibold text-brand-700">یک مرحله تا شروع</div><h1 className="h2 mt-2">شماره موبایلت را تأیید کن</h1><p className="muted mt-2 leading-7">برای امنیت حساب و بازیابی دسترسی، شماره موبایل لازم است. کد تأیید برایت پیامک می‌شود؛ بعد از تأیید به داشبورد منتقل می‌شوی.</p></div><PhoneVerificationForm kind="customer" /></main>}

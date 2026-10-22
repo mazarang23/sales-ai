@@ -31,7 +31,7 @@ export async function GET(req: Request) {
       const byGoogle = await db.user.findUnique({ where: { googleSub: profile.sub } });
       if (byGoogle) {
         await createSession(byGoogle.id);
-        return NextResponse.redirect(new URL(byGoogle.role === "ADMIN" ? "/admin" : "/dashboard", origin));
+        return NextResponse.redirect(new URL(!byGoogle.phone ? "/complete-profile" : byGoogle.role === "ADMIN" ? "/admin" : "/dashboard", origin));
       }
 
       const byEmail = await db.user.findUnique({ where: { email: profile.email } });
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
           data: { googleSub: profile.sub, name: byEmail.name || profile.name || null }
         });
         await createSession(user.id);
-        return NextResponse.redirect(new URL(user.role === "ADMIN" ? "/admin" : "/dashboard", origin));
+        return NextResponse.redirect(new URL(!user.phone ? "/complete-profile" : user.role === "ADMIN" ? "/admin" : "/dashboard", origin));
       }
 
       const user = await db.user.create({
@@ -54,13 +54,13 @@ export async function GET(req: Request) {
         }
       });
       await createSession(user.id);
-      return NextResponse.redirect(new URL("/dashboard", origin));
+      return NextResponse.redirect(new URL("/complete-profile", origin));
     }
 
     const byGoogle = await db.consultant.findUnique({ where: { googleSub: profile.sub } });
     if (byGoogle) {
       await createConsultantSession(byGoogle.id);
-      return NextResponse.redirect(new URL("/consultant/dashboard", origin));
+      return NextResponse.redirect(new URL(!byGoogle.phone || !byGoogle.userId ? "/consultant/complete-profile" : "/consultant/dashboard", origin));
     }
 
     const byEmail = await db.consultant.findUnique({ where: { email: profile.email } });
@@ -71,7 +71,7 @@ export async function GET(req: Request) {
         data: { googleSub: profile.sub, displayName: byEmail.displayName || profile.name || "مشاور" }
       });
       await createConsultantSession(consultant.id);
-      return NextResponse.redirect(new URL("/consultant/dashboard", origin));
+      return NextResponse.redirect(new URL(!consultant.phone || !consultant.userId ? "/consultant/complete-profile" : "/consultant/dashboard", origin));
     }
 
     const consultant = await db.consultant.create({
@@ -87,7 +87,7 @@ export async function GET(req: Request) {
       }
     });
     await createConsultantSession(consultant.id);
-    return NextResponse.redirect(new URL("/consultant/dashboard", origin));
+    return NextResponse.redirect(new URL("/consultant/complete-profile", origin));
   } catch (error) {
     console.error("google oauth error:", error instanceof Error ? error.message : error);
     const reason = error instanceof Error ? error.message : "GOOGLE_AUTH_FAILED";

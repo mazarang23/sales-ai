@@ -70,7 +70,7 @@ export default async function SubscriptionsPage() {
                 <tr key={s.id} className="border-t border-slate-100">
                   <td className="px-3 py-2 text-xs">{formatDate(s.createdAt)}</td>
                   <td className="px-3 py-2">{PLAN_LABELS[s.plan] || s.plan}</td>
-                  <td className="px-3 py-2">{formatIRR(s.amount)}</td>
+                  <td className="px-3 py-2">{s.status === "manual" ? "—" : formatIRR(s.amount)}</td>
                   <td className="px-3 py-2">
                     <span
                       className={`rounded px-2 py-0.5 text-xs ${

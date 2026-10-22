@@ -8,6 +8,14 @@ async function guard() {
   return u;
 }
 
+export async function PATCH(req: NextRequest) {
+  if (!(await guard())) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  const body = await req.json();
+  if (typeof body.id !== "string" || typeof body.published !== "boolean") return NextResponse.json({ error: "درخواست نامعتبر" }, { status: 400 });
+  const post = await db.blogPost.update({ where: { id: body.id }, data: { published: body.published } });
+  return NextResponse.json({ ok: true, id: post.id, published: post.published });
+}
+
 export async function POST(req: NextRequest) {
   if (!(await guard())) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   const b = await req.json();

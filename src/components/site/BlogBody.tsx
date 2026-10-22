@@ -1,0 +1,5 @@
+export function BlogBody({ body }: { body: string }) {
+ const lines=body.split(/\r?\n/); const blocks: {type:"h2"|"h3"|"li"|"p"|"gap";text:string}[]=[];
+ for(const raw of lines){const line=raw.trim();if(!line){blocks.push({type:"gap",text:""});continue;}if(line.startsWith("### "))blocks.push({type:"h3",text:line.slice(4)});else if(line.startsWith("## "))blocks.push({type:"h2",text:line.slice(3)});else if(line.startsWith("# "))continue;else if(line.startsWith("- ")||line.startsWith("* "))blocks.push({type:"li",text:line.slice(2)});else if(/^\d+\.\s/.test(line))blocks.push({type:"li",text:line.replace(/^\d+\.\s/,"")});else blocks.push({type:"p",text:line.replace(/\*\*(.*?)\*\*/g,"$1")});}
+ return <div className="mt-8 space-y-3 leading-8 text-slate-700">{blocks.map((b,i)=>b.type==="gap"?<div key={i} className="h-1"/>:b.type==="h2"?<h2 key={i} className="pt-4 text-xl font-bold text-slate-900">{b.text}</h2>:b.type==="h3"?<h3 key={i} className="pt-3 text-lg font-bold text-slate-900">{b.text}</h3>:b.type==="li"?<div key={i} className="flex gap-2 pr-2"><span className="text-brand-600">•</span><p>{b.text}</p></div>:<p key={i}>{b.text}</p>)}</div>;
+}
