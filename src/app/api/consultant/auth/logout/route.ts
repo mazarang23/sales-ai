@@ -1,16 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { destroyConsultantSession } from "@/lib/consultant-auth";
 
-export async function POST() {
+async function handle(req: NextRequest) {
   await destroyConsultantSession();
-  return NextResponse.redirect(
-    new URL("/", process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
-  );
+  return NextResponse.redirect(new URL("/consultant/login", req.url));
 }
 
-export async function GET() {
-  await destroyConsultantSession();
-  return NextResponse.redirect(
-    new URL("/", process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
-  );
+export async function POST(req: NextRequest) {
+  return handle(req);
+}
+
+export async function GET(req: NextRequest) {
+  return handle(req);
 }
