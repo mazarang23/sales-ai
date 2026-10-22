@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import {
   createConsultantSession,
   hashPassword
@@ -17,6 +16,9 @@ export async function POST(req: NextRequest) {
         { error: "حساب مشاوری با این شماره پیدا نشد" },
         { status: 400 }
       );
+    }
+    if (!consultant.password) {
+      return NextResponse.json({ error: "این حساب با Google ساخته شده است. از ورود با Google استفاده کنید." }, { status: 400 });
     }
     if (consultant.password !== hashPassword(String(password))) {
       return NextResponse.json({ error: "رمز عبور اشتباه است" }, { status: 400 });
