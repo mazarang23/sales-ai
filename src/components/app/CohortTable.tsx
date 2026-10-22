@@ -51,7 +51,7 @@ export function CohortTable({ cohorts, period }: { cohorts: CohortRow[]; period:
       </div>
       <div className="flex flex-wrap gap-3 text-xs text-slate-500">
         <span>۰٪ = بازگشتی ثبت نشده</span><span>— = خارج از بازه قابل مشاهده</span>
-        <span>برای مشاهده دوره‌های بیشتر، جدول را افقی پیمایش کنید؛ محدودیت ثابت ۱۲ ستونه حذف شده است.</span>
+        <span>خانه‌های خالی یعنی آن دوره هنوز در داده‌های این کوهورت قرار نمی‌گیرد.</span>
       </div>
     </div>
   );

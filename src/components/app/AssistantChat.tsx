@@ -65,29 +65,29 @@ export function AssistantChat({ uploadId }: { uploadId?: string }) {
       <div>
         <div className="font-bold">دستیار هوشمند</div>
         <div className="muted text-sm mt-1">
-          درباره داده‌ها یا اقدامات رشد سوال بپرس. پاسخ‌ها بر اساس داده‌های همین آپلود است.
+          درباره داده‌ها یا اقدامات رشد سؤال بپرس. پاسخ‌ها بر اساس داده‌های همین آپلود است.
         </div>
       </div>
 
       {messages.length > 0 && (
         <div
           ref={scrollRef}
-          className="max-h-96 overflow-y-auto space-y-3 rounded-xl bg-slate-50 p-4"
+          className="max-h-96 overflow-y-auto space-y-4 rounded-2xl border border-slate-100 bg-gradient-to-b from-slate-50 to-white p-4 sm:p-5"
         >
           {messages.map((m, i) => (
             <div
               key={i}
-              className={`rounded-xl p-3 text-sm leading-7 whitespace-pre-wrap ${
+              className={`rounded-2xl p-4 text-sm leading-7 whitespace-pre-wrap shadow-sm ${
                 m.role === "user"
-                  ? "bg-brand-600 text-white ml-auto max-w-[80%]"
-                  : "bg-white border border-slate-200 max-w-[90%]"
+                  ? "bg-brand-600 text-white ml-auto max-w-[88%] rounded-tr-md"
+                  : "bg-white border border-slate-200 ml-auto max-w-[92%] rounded-tl-md"
               }`}
             >
               {m.content}
             </div>
           ))}
           {busy && (
-            <div className="bg-white border border-slate-200 rounded-xl p-3 text-sm text-slate-500 max-w-[90%]">
+            <div className="ml-auto max-w-[92%] rounded-2xl rounded-tl-md border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm">
               در حال فکر کردن...
             </div>
           )}
@@ -103,17 +103,17 @@ export function AssistantChat({ uploadId }: { uploadId?: string }) {
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
         <input
-          className="input flex-1"
+          className="input flex-1 border-0 shadow-none focus:ring-0"
           value={question}
           onChange={e => setQuestion(e.target.value)}
-          placeholder="مثلاً: چطور فروش را ۲۰٪ افزایش بدهم؟"
+          placeholder="سؤالت درباره فروش و مشتری‌ها را بنوی…"
           onKeyDown={e => e.key === "Enter" && ask()}
           disabled={busy}
         />
         <button onClick={ask} disabled={busy || !question.trim()} className="btn-primary">
-          {busy ? "..." : "بپرس"}
+          {busy ? "..." : "ارسال پیام"}
         </button>
       </div>
 
