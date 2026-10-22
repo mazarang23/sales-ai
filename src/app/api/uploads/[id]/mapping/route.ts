@@ -86,7 +86,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         await db.mapping.update({ where: { uploadId: upload.id }, data: { fieldMap: fieldMap as any, mergedColumns: merges as any, headers: finalHeaders } });
-        await db.insight.deleteMany({ where: { uploadId: upload.id, kind: "cohort" } });
+        await db.insight.deleteMany({ where: { uploadId: upload.id, kind: { in: ["cohort", "cohort_v2", "cohort_v3", "rfm_v1", "trend_v1"] } } });
         send({ type: "done", updated: rows.length, headers: finalHeaders, currency });
         controller.close();
       } catch (error) {
