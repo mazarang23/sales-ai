@@ -8,7 +8,6 @@ import { applyCurrency, Currency } from "@/lib/excel/currency";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
-
 const UPDATE_CONCURRENCY = 25;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -17,40 +16,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const body = await req.json();
-  const fieldMap = body.fieldMap || {};
+  const fieldMap = { ...(body.fieldMap || {}) } as Record<string, string>;
   const merges: MergeRule[] = body.merges || [];
   const currency: Currency = body.currency || "rial";
+  fieldMap._currency = currency;
 
   const upload = await db.upload.findFirst({ where: { id, userId: user.id }, include: { mappings: true } });
   if (!upload || !upload.mappings) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
   const rows = await db.dataRow.findMany({ where: { uploadId: upload.id } });
+  const analyticsFieldMap = { ...fieldMap };
+  delete analyticsFieldMap._currency;
 
   for (let i = 0; i < rows.length; i += UPDATE_CONCURRENCY) {
     const batch = rows.slice(i, i + UPDATE_CONCURRENCY);
     await Promise.all(batch.map(async r => {
       const raw = applyMerges(r.raw as any, merges);
-      const customerVal = fieldMap.customer ? raw[fieldMap.customer] : null;
-      const productVal = fieldMap.product ? raw[fieldMap.product] : null;
-      const amountVal = fieldMap.amount ? raw[fieldMap.amount] : null;
-      const dateVal = fieldMap.date ? raw[fieldMap.date] : null;
-      const orderVal = fieldMap.orderId ? raw[fieldMap.orderId] : null;
-
+      const customerVal = analyticsFieldMap.customer ? raw[analyticsFieldMap.customer] : null;
+      const productVal = analyticsFieldMap.product ? raw[analyticsFieldMap.product] : null;
+      const amountVal = analyticsFieldMap.amount ? raw[analyticsFieldMap.amount] : null;
+      const dateVal = analyticsFieldMap.date ? raw[analyticsFieldMap.date] : null;
+      const orderVal = analyticsFieldMap.orderId ? raw[analyticsFieldMap.orderId] : null;
       let amount = parseAmount(amountVal);
       if (amount == null) amount = parseAmountText(amountVal);
       amount = applyCurrency(amount, currency);
-
-      await db.dataRow.update({
-        where: { id: r.id },
-        data: {
-          raw,
-          customer: customerVal != null ? String(customerVal) : null,
-          product: productVal != null ? String(productVal) : null,
-          amount,
-          date: parseDate(dateVal),
-          orderId: orderVal != null ? String(orderVal) : null
-        }
-      });
+      await db.dataRow.update({ where: { id: r.id }, data: { raw, customer: customerVal != null ? String(customerVal) : null, product: productVal != null ? String(productVal) : null, amount, date: parseDate(dateVal), orderId: orderVal != null ? String(orderVal) : null } });
     }));
   }
 
@@ -60,11 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const mergeNames = merges.map(m => m.name).filter(Boolean);
   const finalHeaders = [...baseHeaders, ...mergeNames];
 
-  await db.mapping.update({
-    where: { uploadId: upload.id },
-    data: { fieldMap, mergedColumns: merges as any, headers: finalHeaders }
-  });
+  await db.mapping.update({ where: { uploadId: upload.id }, data: { fieldMap: fieldMap as any, mergedColumns: merges as any, headers: finalHeaders } });
   await db.insight.deleteMany({ where: { uploadId: upload.id, kind: "cohort" } });
-
   return NextResponse.json({ ok: true, updated: rows.length, headers: finalHeaders, currency });
 }
