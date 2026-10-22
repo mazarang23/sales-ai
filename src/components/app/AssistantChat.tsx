@@ -77,17 +77,17 @@ export function AssistantChat({ uploadId }: { uploadId?: string }) {
           {messages.map((m, i) => (
             <div
               key={i}
-              className={`rounded-xl p-3 text-sm leading-7 whitespace-pre-wrap ${
+              className={`rounded-2xl p-4 text-sm leading-7 whitespace-pre-wrap shadow-sm ${
                 m.role === "user"
-                  ? "bg-brand-600 text-white ml-auto max-w-[80%]"
-                  : "bg-white border border-slate-200 max-w-[90%]"
+                  ? "bg-brand-600 text-white ml-auto max-w-[88%] rounded-tr-md"
+                  : "bg-white border border-slate-200 ml-auto max-w-[92%] rounded-tl-md"
               }`}
             >
               {m.content}
             </div>
           ))}
           {busy && (
-            <div className="bg-white border border-slate-200 rounded-xl p-3 text-sm text-slate-500 max-w-[90%]">
+            <div className="ml-auto max-w-[92%] rounded-2xl rounded-tl-md border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm">
               در حال فکر کردن...
             </div>
           )}
