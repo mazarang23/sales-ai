@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
  if(consultant.phone&&consultant.phone!==phone)return NextResponse.json({error:"این پروفایل قبلاً شماره دیگری دارد؛ برای تغییر شماره با پشتیبانی تماس بگیرید."},{status:409});
  const other=await db.consultant.findUnique({where:{phone},select:{id:true,userId:true}});
  if(other&&other.id!==consultant.id)return NextResponse.json({error:"این شماره قبلاً برای پروفایل مشاور دیگری ثبت شده است."},{status:409});
- if(user.consultant&&user.consultant.id!==consultant.id)return NextResponse.json({error:"این حساب از قبل به پروفایل مشاور دیگری متصل است."},{status:409});
+ const linkedConsultant=await db.consultant.findUnique({where:{userId:user.id},select:{id:true}});\n if(linkedConsultant&&linkedConsultant.id!==consultant.id)return NextResponse.json({error:"این حساب از قبل به پروفایل مشاور دیگری متصل است."},{status:409});
  const updated=await db.consultant.update({where:{id:consultant.id},data:{phone,userId:user.id,displayName:consultant.displayName||user.name||"مشاور"}});
  return NextResponse.json({ok:true,id:updated.id});
 }
