@@ -87,7 +87,7 @@ export async function GET(req: Request) {
       }
     });
     await createConsultantSession(consultant.id);
-    return NextResponse.redirect(new URL("/consultant/dashboard", origin));
+    return NextResponse.redirect(new URL("/consultant/complete-profile", origin));
   } catch (error) {
     console.error("google oauth error:", error instanceof Error ? error.message : error);
     const reason = error instanceof Error ? error.message : "GOOGLE_AUTH_FAILED";
