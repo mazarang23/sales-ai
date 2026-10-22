@@ -12,14 +12,14 @@ export async function AppNav({ current }: { current?: string }) {
   });
 
   const items: { href: string; label: string; key: string }[] = [
-    { href: "/dashboard", label: "Ø¯Ø§Ø´Ø¨ÙˆØ±Ø¯", key: "dashboard" },
-    { href: "/bookings", label: "Ø¬Ù„Ø³Ø§Øª", key: "bookings" },
-    { href: "/account", label: "Ø­Ø³Ø§Ø¨ Ù…Ù†", key: "account" },
-    { href: "/upload", label: "Ø¢Ù¾Ù„ÙˆØ¯ Ø¬Ø¯ÛŒØ¯", key: "upload" }
+    { href: "/dashboard", label: "داشبورد", key: "dashboard" },
+    { href: "/bookings", label: "جلسات", key: "bookings" },
+    { href: "/account", label: "حساب من", key: "account" },
+    { href: "/upload", label: "آپلود جدید", key: "upload" }
   ];
 
   return (
-    <div className="border-b border-slate-200 bg-white sticky top-14 z-30">
+    <div className="relative z-30 border-b border-slate-200 bg-white">
       <div className="container-tight flex gap-1 overflow-x-auto py-2 text-sm">
         {items.map(it => (
           <Link
@@ -39,7 +39,7 @@ export async function AppNav({ current }: { current?: string }) {
             href="/consultant/dashboard"
             className="rounded-lg px-3 py-1.5 whitespace-nowrap text-emerald-700 hover:bg-emerald-50"
           >
-            Ù¾Ù†Ù„ Ù…Ø´Ø§ÙˆØ±
+            پنل مشاور
           </Link>
         )}
         {user.role === "ADMIN" && (
@@ -47,7 +47,7 @@ export async function AppNav({ current }: { current?: string }) {
             href="/admin"
             className="rounded-lg px-3 py-1.5 whitespace-nowrap text-brand-700 hover:bg-brand-50"
           >
-            Ù¾Ù†Ù„ Ø§Ø¯Ù…ÛŒÙ†
+            پنل ادمین
           </Link>
         )}
       </div>

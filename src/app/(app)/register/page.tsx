@@ -1,4 +1,4 @@
-import { OtpForm } from "@/components/app/OtpForm";
+import { RegisterForm } from "@/components/app/RegisterForm";
 
 export const metadata = { title: "ثبت‌نام" };
 
@@ -7,10 +7,10 @@ export default function RegisterPage() {
     <div className="container-tight py-16 max-w-md mx-auto" dir="rtl">
       <h1 className="h2 text-center">ثبت‌نام</h1>
       <p className="muted mt-2 text-center">
-        با شماره موبایل ثبت‌نام کن. کد تایید برایت پیامک می‌شود.
+        اطلاعاتت را وارد کن تا حساب کاربری‌ات ساخته شود.
       </p>
       <div className="mt-8">
-        <OtpForm mode="register" />
+        <RegisterForm />
       </div>
       <p className="mt-4 text-sm text-slate-500 text-center">
         حساب داری؟{" "}
