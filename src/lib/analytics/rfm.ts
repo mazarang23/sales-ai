@@ -53,8 +53,13 @@ export function computeRfm(rows: Row[]): RfmCustomer[] {
   // Tied metric values get the same score instead of arbitrary scores from sort order.
   function score(value: number, values: number[], lowerIsBetter = false): number {
     if (!values.length) return 1;
-    const rank = values.filter(v => v <= value).length / values.length;
-    const ascending = Math.max(1, Math.min(5, Math.ceil(rank * 5)));
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    if (min === max) return 3;
+    const less = values.filter(v => v < value).length;
+    const equal = values.filter(v => v === value).length;
+    const percentile = (less + equal / 2) / values.length;
+    const ascending = Math.max(1, Math.min(5, Math.ceil(percentile * 5)));
     return lowerIsBetter ? 6 - ascending : ascending;
   }
 
