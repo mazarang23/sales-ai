@@ -25,12 +25,13 @@ export function computeRfm(rows: Row[]): RfmCustomer[] {
   });
   const analysisDate = validRows.reduce((max, r) => Math.max(max, r.timestamp), 0);
   const byCustomer = new Map<string, {
-    first: number; last: number; sum: number; orderIds: Set<string>; rowsWithoutOrderId: number;
+    name: string; first: number; last: number; sum: number; orderIds: Set<string>; rowsWithoutOrderId: number;
   }>();
 
   for (const row of validRows) {
-    const value = byCustomer.get(row.customer!) ?? {
-      first: 0, last: 0, sum: 0, orderIds: new Set<string>(), rowsWithoutOrderId: 0
+    const customerKey = row.customer!.normalize("NFKC").replace(/[يى]/g, "ی").replace(/ك/g, "ک").replace(/\s+/g, " ").trim().toLocaleLowerCase("fa-IR");
+    const value = byCustomer.get(customerKey) ?? {
+      name: row.customer!, first: 0, last: 0, sum: 0, orderIds: new Set<string>(), rowsWithoutOrderId: 0
     };
     value.sum += row.amount ?? 0;
     if (row.orderId?.trim()) value.orderIds.add(row.orderId.trim());
@@ -39,11 +40,11 @@ export function computeRfm(rows: Row[]): RfmCustomer[] {
       value.first = value.first ? Math.min(value.first, row.timestamp) : row.timestamp;
       value.last = Math.max(value.last, row.timestamp);
     }
-    byCustomer.set(row.customer!, value);
+    byCustomer.set(customerKey, value);
   }
 
-  const customers = [...byCustomer.entries()].map(([name, v]) => ({
-    name,
+  const customers = [...byCustomer.values()].map(v => ({
+    name: v.name,
     recency: v.last && analysisDate ? Math.max(0, Math.floor((analysisDate - v.last) / 86400000)) : -1,
     count: v.orderIds.size + v.rowsWithoutOrderId,
     sum: v.sum, first: v.first, last: v.last, hasDate: v.last > 0
