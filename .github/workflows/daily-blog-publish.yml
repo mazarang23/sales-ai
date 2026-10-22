@@ -1,0 +1,51 @@
+name: Daily Blog Publish
+on:
+  schedule:
+    - cron: "30 4 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate a practical Persian article
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OPENROUTER_API_KEY:-}" ]; then
+            echo "Missing GitHub secret OPENROUTER_API_KEY"; exit 1
+          fi
+          TODAY="$(date -u +%F)"
+          PROMPT="برای وبلاگ فارسی فروش‌یار یک مقاله آموزشی کاربردی و آماده انتشار بنویس. تاریخ شناسه مقاله: ${TODAY}. موضوع را از بین تحلیل فروشگاه، سنجش سود در برابر فروش، نگهداشت مشتری، RFM، Cohort، سبد خرید، موجودی، تخفیف و بازاریابی انتخاب کن و تا حد امکان با مقالات قبلی متفاوت باشد. هیچ آمار یا پژوهش ساختگی نساز؛ مثال عددی را صریحاً فرضی معرفی کن. متن باید فارسی روان، عملی، بدون شعار و حدود 900 تا 1300 کلمه باشد؛ شامل مقدمه، 4 تا 6 تیتر، یک مثال فرضی، چک‌لیست اقدام و جمع‌بندی. متن body را با Markdown بنویس. فقط JSON معتبر با کلیدهای title، excerpt، slug، body برگردان؛ slug انگلیسی کوتاه و شامل ${TODAY} باشد، مثل retail-retention-${TODAY}. excerpt بین 2 تا 3 جمله باشد."
+          jq -n --arg prompt "$PROMPT" '{
+            model:"google/gemini-3.1-flash-lite",
+            temperature:0.7,
+            messages:[
+              {role:"system",content:"You are a careful Persian editorial writer for an ecommerce sales analytics product. Return valid JSON only, with no markdown code fence. Avoid fabricated statistics, sources, or promises."},
+              {role:"user",content:$prompt}
+            ],
+            response_format:{type:"json_object"}
+          }' > request.json
+          curl --fail-with-body --silent --show-error https://openrouter.ai/api/v1/chat/completions \
+            -H "Authorization: Bearer ${OPENROUTER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d @request.json > response.json
+          jq -er '.choices[0].message.content' response.json > article.json
+          jq -e '.title and .excerpt and .slug and .body' article.json >/dev/null
+          jq '{title,excerpt,slug,body}' article.json > publish.json
+      - name: Publish to Foroshyar CMS
+        env:
+          CONTENT_PUBLISH_TOKEN: ${{ secrets.CONTENT_PUBLISH_TOKEN }}
+          SITE_URL: https://foorooshyaar.ir
+        run: |
+          set -euo pipefail
+          if [ -z "${CONTENT_PUBLISH_TOKEN:-}" ]; then
+            echo "Missing GitHub secret CONTENT_PUBLISH_TOKEN"; exit 1
+          fi
+          curl --fail-with-body --silent --show-error \
+            -X POST "${SITE_URL}/api/automation/publish-blog" \
+            -H "Authorization: Bearer ${CONTENT_PUBLISH_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data-binary @publish.json
