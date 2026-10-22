@@ -47,8 +47,7 @@ RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholde
     pnpm prisma generate
 
 # Build Next.js
-RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" \
-    pnpm build
+RUN pnpm build
 
 
 # =========================

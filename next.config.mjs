@@ -6,8 +6,7 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "25mb",
     },
-
-    webpackBuildWorker: true,
+    webpackBuildWorker: false,
   },
 
   eslint: {
