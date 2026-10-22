@@ -1,7 +1,7 @@
-"use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { NotificationBell } from "@/components/app/NotificationBell";
+import { getCurrentUser } from "@/lib/auth";
+import { db } from "@/lib/db";
 
 type User = {
   id: string;
@@ -18,21 +18,24 @@ const PLAN_LABELS: Record<string, string> = {
   business: "حرفه‌ای"
 };
 
-export function AppHeader() {
-  const [user, setUser] = useState<User | null>(null);
-  const [consultant, setConsultant] = useState<Consultant>(null);
-  const [loading, setLoading] = useState(true);
+export async function AppHeader() {
+  const currentUser = await getCurrentUser();
+  const user: User | null = currentUser
+    ? {
+        id: currentUser.id,
+        phone: currentUser.phone,
+        name: currentUser.name,
+        role: currentUser.role,
+        plan: currentUser.plan
+      }
+    : null;
 
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then(r => r.json())
-      .then(j => {
-        setUser(j.user || null);
-        setConsultant(j.consultant || null);
+  const consultant: Consultant = user
+    ? await db.consultant.findUnique({
+        where: { userId: user.id },
+        select: { id: true, status: true, displayName: true }
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    : null;
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/90 backdrop-blur">
@@ -40,9 +43,7 @@ export function AppHeader() {
         <Link href="/" className="font-black">فروشیار AI</Link>
 
         <div className="flex items-center gap-3 text-sm">
-          {loading ? (
-            <span className="text-slate-400">...</span>
-          ) : user ? (
+          {user ? (
             <>
               {user.plan !== "free" && (
                 <span className="hidden sm:inline-flex rounded-lg bg-emerald-50 text-emerald-700 px-2 py-1 text-xs">
