@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm exec prisma generate
+      - name: TypeScript check
+        run: pnpm exec tsc --noEmit
+      - name: Production build
+        run: pnpm build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          # CI verifies compilation; no production credentials or database writes are needed.
+          DATABASE_URL: "postgresql://ci:ci@127.0.0.1:5432/ci?schema=public"
