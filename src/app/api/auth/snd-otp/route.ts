@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
     }
     const code = generateOtp();
     const expiresAt = new Date(Date.now() + 2 * 60 * 1000);
-    if (current && !current.phone) {
+    if (current) {
+      // Keep the pending OTP on the signed-in account so changing a phone never creates a duplicate user.
       await db.user.update({ where: { id: current.id }, data: { otpCode: code, otpExpiresAt: expiresAt } });
     } else {
       await db.user.upsert({
