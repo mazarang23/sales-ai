@@ -1,104 +1,95 @@
 import { Row } from "./kpi";
 
 export type Segment = "Champions" | "Loyal" | "Potential" | "AtRisk" | "Lost";
-
 export type RfmCustomer = {
-  name: string;
-  recency: number;
-  count: number;
-  sum: number;
-  first: number;
-  last: number;
-  hasDate: boolean;
-  segment: Segment;
-  segmentReason: string;
-  rScore: number;
-  fScore: number;
-  mScore: number;
+  name: string; recency: number; count: number; sum: number; first: number; last: number;
+  hasDate: boolean; segment: Segment; segmentReason: string; rScore: number; fScore: number; mScore: number;
 };
 
+/**
+ * Recency is measured against the latest valid date in this uploaded dataset, making
+ * historical analyses reproducible. Frequency counts distinct order IDs when present;
+ * rows without an order ID are treated as individual transactions.
+ */
 export function computeRfm(rows: Row[]): RfmCustomer[] {
-  const now = Date.now();
-  const byCustomer = new Map<string, { last: number; first: number; count: number; sum: number }>();
-
-  for (const r of rows) {
-    if (!r.customer) continue;
-    const rawT = r.date ? new Date(r.date).getTime() : 0;
-    const validT = !isNaN(rawT) && rawT > 0 ? rawT : 0;
-    const c = byCustomer.get(r.customer) ?? { last: 0, first: 0, count: 0, sum: 0 };
-    c.count += 1;
-    c.sum += r.amount ?? 0;
-    if (validT > 0) {
-      if (validT > c.last) c.last = validT;
-      if (c.first === 0 || validT < c.first) c.first = validT;
-    }
-    byCustomer.set(r.customer, c);
-  }
-
-  const customers = [...byCustomer.entries()].map(([name, v]) => {
-    const hasDate = v.last > 0;
+  const validRows = (Array.isArray(rows) ? rows : []).filter(r =>
+    r && typeof r.customer === "string" && r.customer.trim().length > 0
+  ).map(r => {
+    const timestamp = r.date ? new Date(r.date).getTime() : 0;
     return {
-      name,
-      recency: hasDate ? Math.max(0, Math.floor((now - v.last) / 86400000)) : -1,
-      count: v.count,
-      sum: v.sum,
-      first: v.first,
-      last: v.last,
-      hasDate
+      ...r,
+      customer: (r.customer as string).trim(),
+      timestamp: Number.isFinite(timestamp) && timestamp > 0 ? timestamp : 0,
+      amount: typeof r.amount === "number" && Number.isFinite(r.amount) ? r.amount : 0
     };
   });
+  const analysisDate = validRows.reduce((max, r) => Math.max(max, r.timestamp), 0);
+  const byCustomer = new Map<string, {
+    first: number; last: number; sum: number; orderIds: Set<string>; rowsWithoutOrderId: number;
+  }>();
 
-  const withDate = customers.filter(c => c.hasDate);
-  // For recency, lower days since last purchase is better, so the freshest
-  // customer must receive the highest score (5), not the lowest score.
-  const sortedR = [...withDate].sort((a, b) => a.recency - b.recency);
-  const sortedF = [...withDate].sort((a, b) => b.count - a.count);
-  const sortedM = [...withDate].sort((a, b) => b.sum - a.sum);
-
-  function quintile<T>(sorted: T[], item: T): number {
-    if (sorted.length === 0) return 1;
-    const idx = sorted.indexOf(item);
-    if (idx < 0) return 1;
-    const q = sorted.length / 5;
-    return Math.min(5, Math.floor(idx / q) + 1);
+  for (const row of validRows) {
+    const value = byCustomer.get(row.customer!) ?? {
+      first: 0, last: 0, sum: 0, orderIds: new Set<string>(), rowsWithoutOrderId: 0
+    };
+    value.sum += row.amount ?? 0;
+    if (row.orderId?.trim()) value.orderIds.add(row.orderId.trim());
+    else value.rowsWithoutOrderId += 1;
+    if (row.timestamp) {
+      value.first = value.first ? Math.min(value.first, row.timestamp) : row.timestamp;
+      value.last = Math.max(value.last, row.timestamp);
+    }
+    byCustomer.set(row.customer!, value);
   }
 
+  const customers = [...byCustomer.entries()].map(([name, v]) => ({
+    name,
+    recency: v.last && analysisDate ? Math.max(0, Math.floor((analysisDate - v.last) / 86400000)) : -1,
+    count: v.orderIds.size + v.rowsWithoutOrderId,
+    sum: v.sum, first: v.first, last: v.last, hasDate: v.last > 0
+  }));
+  const dated = customers.filter(c => c.hasDate);
+
+  // Tied metric values get the same score instead of arbitrary scores from sort order.
+  function score(value: number, values: number[], lowerIsBetter = false): number {
+    if (!values.length) return 1;
+    const rank = values.filter(v => v <= value).length / values.length;
+    const ascending = Math.max(1, Math.min(5, Math.ceil(rank * 5)));
+    return lowerIsBetter ? 6 - ascending : ascending;
+  }
+
+  const recencies = dated.map(c => c.recency);
+  const frequencies = dated.map(c => c.count);
+  const monetary = dated.map(c => c.sum);
+
   return customers.map(c => {
-    if (!c.hasDate) {
-      return {
-        ...c,
-        segment: "Potential" as Segment,
-        segmentReason: "تاریخ خرید ثبت نشده است؛ در بخش «بالقوه» قرار گرفت.",
-        rScore: 0,
-        fScore: 0,
-        mScore: 0
-      };
-    }
+    if (!c.hasDate) return {
+      ...c, segment: "Potential" as Segment,
+      segmentReason: "تاریخ خرید معتبر ثبت نشده؛ امتیاز RFM برای این مشتری قابل اتکا نیست.",
+      rScore: 0, fScore: 0, mScore: 0
+    };
 
-    const rScore = 6 - quintile(sortedR, c);
-    const fScore = quintile(sortedF, c);
-    const mScore = quintile(sortedM, c);
-    const avg = (rScore + fScore + mScore) / 3;
-
+    const rScore = score(c.recency, recencies, true);
+    const fScore = score(c.count, frequencies);
+    const mScore = score(c.sum, monetary);
     let segment: Segment;
     let reason: string;
-    if (avg >= 4.5) {
-      segment = "Champions";
-      reason = `میانگین ${avg.toFixed(1)} — خرید اخیر (${c.recency} روز پیش)، ${c.count} خرید، مجموع ${Math.round(c.sum).toLocaleString("fa-IR")} ریال`;
-    } else if (avg >= 3.5) {
-      segment = "Loyal";
-      reason = `میانگین ${avg.toFixed(1)} — خرید نسبتاً اخیر (${c.recency} روز پیش)، ${c.count} خرید`;
-    } else if (avg >= 2.5) {
-      segment = "Potential";
-      reason = `میانگین ${avg.toFixed(1)} — پتانسیل رشد (${c.recency} روز پیش، ${c.count} خرید)`;
-    } else if (avg >= 1.5) {
-      segment = "AtRisk";
-      reason = `میانگین ${avg.toFixed(1)} — در خطر ریزش (${c.recency} روز پیش، ${c.count} خرید)`;
-    } else {
-      segment = "Lost";
-      reason = `میانگین ${avg.toFixed(1)} — از دست رفته (${c.recency} روز پیش، ${c.count} خرید)`;
-    }
 
-    return { ...c, segment, segmentReason: reason, rScore, fScore, mScore };
+    if (rScore >= 4 && fScore >= 4 && mScore >= 4) {
+      segment = "Champions"; reason = "خرید اخیر، تکرار خرید بالا و ارزش خرید بالا";
+    } else if (rScore >= 3 && fScore >= 3) {
+      segment = "Loyal"; reason = "خرید نسبتاً اخیر و تکرار خرید مناسب";
+    } else if (rScore >= 3 && fScore <= 2) {
+      segment = "Potential"; reason = "خرید اخیر، اما هنوز خریدهای تکراری کمی دارد";
+    } else if (rScore <= 2 && (fScore >= 3 || mScore >= 3)) {
+      segment = "AtRisk"; reason = "در گذشته ارزش یا تکرار خرید مناسبی داشته، اما مدتی است خرید نکرده";
+    } else {
+      segment = "Lost"; reason = "تازگی، تکرار و ارزش خرید پایین‌تر از سایر مشتریان";
+    }
+    return {
+      ...c, segment,
+      segmentReason: `${reason}؛ آخرین خرید ${c.recency} روز قبل از آخرین تاریخ فایل، ${c.count} تراکنش، مجموع ${Math.round(c.sum).toLocaleString("fa-IR")}`,
+      rScore, fScore, mScore
+    };
   });
 }
