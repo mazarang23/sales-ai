@@ -50,6 +50,7 @@ export function AppHeader() {
                 </span>
               )}
               <Link href="/dashboard" className="text-slate-600 hover:text-brand-600">داشبورد</Link>
+              <Link href="/upload" className="text-slate-600 hover:text-brand-600">آپلود</Link>
               <Link href="/bookings" className="text-slate-600 hover:text-brand-600">جلسات</Link>
               <Link href="/account" className="text-slate-600 hover:text-brand-600 font-medium">حساب من</Link>
               {consultant && (
