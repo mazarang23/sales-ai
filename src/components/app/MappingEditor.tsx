@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -48,6 +48,7 @@ export function MappingEditor({
   preview: any[];
 }) {
   const router = useRouter();
+  const progressRef = useRef<HTMLDivElement>(null);
   const [headers, setHeaders] = useState<string[]>(initialHeaders);
   const [fieldMap, setFieldMap] = useState<Record<string, string>>(initialFieldMap || {});
   const [merges, setMerges] = useState<Merge[]>(initialMerges || []);
@@ -195,11 +196,15 @@ export function MappingEditor({
 
   const showProgress = busySave && progress;
 
+  useEffect(() => {
+    if (showProgress) progressRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [showProgress, progress?.percent]);
+
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="space-y-6">
         {showProgress && (
-          <div className="card p-6 border-brand-200 bg-brand-50/40" aria-live="polite">
+          <div ref={progressRef} className="card scroll-mt-6 p-6 border-brand-200 bg-brand-50/40" aria-live="polite">
             <div className="flex items-center justify-between gap-4 mb-3">
               <div>
                 <div className="font-bold">در حال ذخیره نگاشت و آماده‌سازی تحلیل</div>
