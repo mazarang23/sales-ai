@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "این شماره به حساب دیگری متصل است." }, { status: 409 });
     }
     const consultant = await db.consultant.findUnique({ where: { phone: String(phone) }, select: { userId: true } });
-    if (consultant && consultant.userId && consultant.userId !== user.id) {
+    if (consultant && consultant.userId !== user.id) {
       return NextResponse.json({ error: "این شماره به حساب مشاور دیگری متصل است." }, { status: 409 });
     }
     await db.user.update({
