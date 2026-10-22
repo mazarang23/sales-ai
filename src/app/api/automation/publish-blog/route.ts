@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { db } from "@/lib/db";
 export const runtime = "nodejs";
-export async function GET() {\n const posts=await db.blogPost.findMany({where:{published:true},orderBy:{createdAt:"desc"},take:20,select:{title:true,excerpt:true,slug:true}});\n return NextResponse.json({posts});\n}\n\nexport async function POST(req: NextRequest) {
+export async function GET() {
+ const posts=await db.blogPost.findMany({where:{published:true},orderBy:{createdAt:"desc"},take:20,select:{title:true,excerpt:true,slug:true}});
+ return NextResponse.json({posts});
+}
+
+export async function POST(req: NextRequest) {
  const expected=process.env.CONTENT_PUBLISH_TOKEN;
  if(!expected)return NextResponse.json({error:"CONTENT_PUBLISH_TOKEN تنظیم نشده است."},{status:503});
  const supplied=(req.headers.get("authorization")||"").replace(/^Bearer\s+/i,"");
