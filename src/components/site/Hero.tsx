@@ -37,10 +37,10 @@ export function Hero({
               مشاهده مشاورین
             </Link>
           </div>
-          <div className="mt-6 sm:mt-8 flex items-center gap-4 sm:gap-6 text-xs sm:text-sm text-slate-600 flex-wrap">
-            <div><span className="font-bold text-slate-900">RFM</span> شناخت مشتریان</div>
-            <div><span className="font-bold text-slate-900">Cohort</span> بررسی بازگشت</div>
-            <div><span className="font-bold text-slate-900">فارسی</span> تجربه بومی</div>
+          <div className="mt-6 sm:mt-8 grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-3">
+            <div className="rounded-xl border border-slate-200 bg-white/80 p-3"><div className="font-bold text-slate-900">روند فروش</div><div className="mt-1 text-xs leading-5 text-slate-500">فروش چه زمانی رشد یا افت کرده؟</div></div>
+            <div className="rounded-xl border border-slate-200 bg-white/80 p-3"><div className="font-bold text-slate-900">شناخت مشتری</div><div className="mt-1 text-xs leading-5 text-slate-500">چه کسانی ارزش بازگشت دارند؟</div></div>
+            <div className="rounded-xl border border-slate-200 bg-white/80 p-3"><div className="font-bold text-slate-900">قدم بعدی</div><div className="mt-1 text-xs leading-5 text-slate-500">کدام اقدام را زودتر انجام بدهی؟</div></div>
           </div>
         </div>
         <div className="md:justify-self-end w-full max-w-md">
