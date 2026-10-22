@@ -13,8 +13,6 @@ export async function AppNav({ current }: { current?: string }) {
 
   const items: { href: string; label: string; key: string }[] = [
     { href: "/dashboard", label: "داشبورد فروش", key: "dashboard" },
-    { href: "/customers", label: "مشتریان", key: "customers" },
-    { href: "/products", label: "محصولات", key: "products" },
     { href: "/upload", label: "ورود داده", key: "upload" },
     { href: "/bookings", label: "جلسات", key: "bookings" },
     { href: "/account", label: "حساب من", key: "account" }
@@ -37,18 +35,12 @@ export async function AppNav({ current }: { current?: string }) {
           </Link>
         ))}
         {consultant && (
-          <Link
-            href="/consultant/dashboard"
-            className="rounded-lg px-3 py-1.5 whitespace-nowrap text-emerald-700 hover:bg-emerald-50"
-          >
+          <Link href="/consultant/dashboard" className="rounded-lg px-3 py-1.5 whitespace-nowrap text-emerald-700 hover:bg-emerald-50">
             پنل مشاور
           </Link>
         )}
         {user.role === "ADMIN" && (
-          <Link
-            href="/admin"
-            className="rounded-lg px-3 py-1.5 whitespace-nowrap text-brand-700 hover:bg-brand-50"
-          >
+          <Link href="/admin" className="rounded-lg px-3 py-1.5 whitespace-nowrap text-brand-700 hover:bg-brand-50">
             پنل ادمین
           </Link>
         )}
