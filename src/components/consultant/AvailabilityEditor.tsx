@@ -1,0 +1,12 @@
+"use client";
+import { useEffect, useState } from "react";
+const DAYS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
+type Slot = { day: number; enabled: boolean; start: string; end: string };
+const defaults: Slot[] = DAYS.map((_, day) => ({ day, enabled: day < 6, start: "09:00", end: "17:00" }));
+export function AvailabilityEditor() {
+  const [items, setItems] = useState<Slot[]>(defaults); const [busy, setBusy] = useState(true); const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => { fetch("/api/consultant/availability").then(r => r.json()).then(j => setItems(j.availability || defaults)).catch(() => {}).finally(() => setBusy(false)); }, []);
+  function patch(day: number, p: Partial<Slot>) { setItems(x => x.map(i => i.day === day ? { ...i, ...p } : i)); }
+  async function save() { setBusy(true); setMsg(null); try { const r = await fetch("/api/consultant/availability", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ availability: items }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error || "خطا"); setMsg("ساعات کاری ذخیره شد ✓"); } catch (e) { setMsg(e instanceof Error ? e.message : "خطا"); } finally { setBusy(false); } }
+  return <div className="card p-6"><div className="font-bold">ساعات قابل رزرو</div><p className="text-xs text-slate-500 mt-1 mb-4">این زمان‌ها مبنای رزرو مشتری هستند. اگر دو درخواست برای یک بازه همزمان برسد، اولین درخواست معتبر ثبت‌شده اولویت دارد.</p><div className="space-y-2">{items.map(i => <div key={i.day} className="grid grid-cols-[90px_1fr] sm:grid-cols-[110px_1fr] items-center gap-3 rounded-xl bg-slate-50 p-3"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={i.enabled} onChange={e => patch(i.day, { enabled: e.target.checked })} />{DAYS[i.day]}</label>{i.enabled ? <div className="flex items-center gap-2"><input type="time" className="input" value={i.start} onChange={e => patch(i.day, { start: e.target.value })} /><span className="text-xs text-slate-400">تا</span><input type="time" className="input" value={i.end} onChange={e => patch(i.day, { end: e.target.value })} /></div> : <span className="text-xs text-slate-400">تعطیل</span>}</div>)}</div>{msg && <div className="mt-3 rounded-xl bg-slate-100 p-3 text-sm">{msg}</div>}<button onClick={save} disabled={busy} className="btn-primary mt-4">{busy ? "در حال ذخیره..." : "ذخیره ساعات کاری"}</button></div>;
+}
