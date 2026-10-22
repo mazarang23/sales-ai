@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { vazirmatnVariable } from "next-persian-fonts/vazirmatn-variable";
+import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://foorooshyaar.ir"),
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fa" dir="rtl" className={vazirmatnVariable.variable}>
       <body className="min-h-screen bg-slate-50 antialiased font-sans">
+        <GoogleAnalytics />
         {children}
       </body>
     </html>
