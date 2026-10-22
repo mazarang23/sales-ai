@@ -43,7 +43,7 @@ export default async function AdminConsultants() {
                     تعرفه: {c.hourlyRate.toLocaleString("fa-IR")} تومان/ساعت
                   </div>
                 </div>
-                <ConsultantApprove consultantId={c.id} />
+                <ConsultantApprove consultantId={c.id} status={c.status} />
               </div>
             </div>
           ))}
@@ -84,10 +84,12 @@ export default async function AdminConsultants() {
                       className={`rounded px-2 py-0.5 text-xs ${
                         c.status === "approved"
                           ? "bg-emerald-50 text-emerald-700"
+                          : c.status === "approved_hidden"
+                          ? "bg-amber-50 text-amber-700"
                           : "bg-red-50 text-red-700"
                       }`}
                     >
-                      {c.status === "approved" ? "تایید شده" : "رد شده"}
+                      {c.status === "approved" ? "نمایش در سایت" : c.status === "approved_hidden" ? "مخفی از سایت" : "رد شده"}
                     </span>
                   </td>
                 </tr>
