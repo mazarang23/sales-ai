@@ -39,6 +39,22 @@ export async function POST(req: NextRequest) {
   const json = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: null, raw: true });
   if (json.length === 0) return NextResponse.json({ error: "فایل خالی است" }, { status: 400 });
 
+  if (appendTarget) {
+    const mapping = (appendTarget.mappings?.fieldMap || {}) as Record<string, string>;
+    const incomingHeaders = new Set(Object.keys(json[0] || {}));
+    const requiredFields = ["customer", "product", "amount", "quantity", "date", "orderId"]
+      .map(key => mapping[key])
+      .filter((header): header is string => typeof header === "string" && header.length > 0);
+    const missingHeaders = [...new Set(requiredFields.filter(header => !incomingHeaders.has(header)))];
+    if (missingHeaders.length) {
+      return NextResponse.json({
+        error: "ستون‌های فایل جدید با فایل قبلی سازگار نیستند. برای جلوگیری از ثبت ناقص داده‌ها، فایل اضافه نشد.",
+        code: "APPEND_COLUMNS_MISMATCH",
+        missingHeaders
+      }, { status: 400 });
+    }
+  }
+
   const existingRowCount = appendTarget ? appendTarget.rowCount : 0;
   const totalRows = existingRowCount + json.length;
   if (totalRows > maxRows) return NextResponse.json({ error: `تعداد ردیف‌ها (${totalRows.toLocaleString("fa-IR")}) بیشتر از سقف پلن «${planLabel}» (${maxRows.toLocaleString("fa-IR")}) است.`, code: "ROW_LIMIT", maxRows, currentPlan: user.plan }, { status: 400 });
@@ -72,8 +88,10 @@ export async function POST(req: NextRequest) {
           };
         }) });
       }
-      await db.upload.update({ where: { id: appendTarget.id }, data: { rowCount: totalRows, fileSize: appendTarget.fileSize + buf.length } });
-      await db.insight.deleteMany({ where: { uploadId: appendTarget.id, kind: "cohort" } });
+      await db.upload.update({ where: { id: appendTarget.id }, data: { rowCount: totalRows, fileSize: appendTarget.fileSize + buf.length, status: "READY" } });
+      // All derived results may be stale after append; clear them so the UI cannot present old analysis as current.
+      await db.insight.deleteMany({ where: { uploadId: appendTarget.id } });
+      await db.recommendation.deleteMany({ where: { uploadId: appendTarget.id } });
       return NextResponse.json({ uploadId: appendTarget.id, rowCount: totalRows, appendedRows: json.length, sheetCount: wb.SheetNames.length, appended: true });
     }
 

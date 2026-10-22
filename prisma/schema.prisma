@@ -11,6 +11,7 @@ datasource db {
 model User {
   id               String         @id @default(cuid())
   phone            String?        @unique
+  phoneVerifiedAt  DateTime?
   email            String?        @unique
   googleSub        String?        @unique
   name             String?
@@ -37,9 +38,9 @@ model User {
 model Subscription {
   id          String   @id @default(cuid())
   userId      String
-  plan        String   // "pro" | "business"
+  plan        String
   amount      Int
-  status      String   @default("pending") // pending | paid | failed
+  status      String   @default("pending")
   authority   String?  @unique
   refId       String?
   paidAt      DateTime?
@@ -64,6 +65,7 @@ model Session {
 model Consultant {
   id            String    @id @default(cuid())
   phone         String?   @unique
+  phoneVerifiedAt DateTime?
   email         String?   @unique
   googleSub     String?   @unique
   password      String?
@@ -93,6 +95,7 @@ model Upload {
   id         String       @id @default(cuid())
   userId     String
   fileName   String
+  displayName String?
   fileKey    String
   fileSize   Int          @default(0)
   sheetCount Int          @default(1)
@@ -218,10 +221,10 @@ model Notification {
   id           String   @id @default(cuid())
   userId       String?
   consultantId String?
-  type         String   // "booking_new" | "booking_accepted" | "booking_paid" | "booking_completed" | ...
+  type         String
   title        String
   body         String
-  link         String?  // لینک به صفحه مربوطه
+  link         String?
   readAt       DateTime?
   smsSentAt    DateTime?
   createdAt    DateTime @default(now())
@@ -252,7 +255,7 @@ model Ticket {
   id        String   @id @default(cuid())
   userId    String
   phone     String
-  type      String   // "report" | "feedback"
+  type      String
   message   String
   rating    Int?
   uploadId  String?

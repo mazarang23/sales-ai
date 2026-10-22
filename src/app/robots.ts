@@ -1,9 +1,16 @@
 import { MetadataRoute } from "next";
 
+const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://foorooshyaar.ir").replace(/\/$/, "");
+
 export default function robots(): MetadataRoute.Robots {
-  const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   return {
-    rules: [{ userAgent: "*", allow: "/", disallow: ["/admin", "/api", "/dashboard", "/upload", "/mapping"] }],
-    sitemap: `${base}/sitemap.xml`
+    rules: [
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/admin", "/api", "/dashboard", "/upload", "/mapping", "/complete-profile"]
+      }
+    ],
+    sitemap: `${SITE_URL}/sitemap.xml`
   };
 }
