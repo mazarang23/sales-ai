@@ -13,7 +13,7 @@ const INDUSTRIES = [
   { v: "other", l: "سایر" }
 ];
 
-export function ProfileForm({ initial }: { initial: { name: string; industry: string; phone: string } }) {
+export function ProfileForm({ initial }: { initial: { name: string; industry: string; phone: string | null } }) {
   const router = useRouter();
   const [name, setName] = useState(initial.name);
   const [industry, setIndustry] = useState(initial.industry);
@@ -44,7 +44,7 @@ export function ProfileForm({ initial }: { initial: { name: string; industry: st
     <form onSubmit={submit} className="card p-6 space-y-4">
       <div>
         <label className="text-sm font-medium">شماره موبایل (غیرقابل تغییر)</label>
-        <input className="input mt-1 text-left" dir="ltr" value={initial.phone} disabled />
+        <input className="input mt-1 text-left" dir="ltr" value={initial.phone || "ثبت نشده"} disabled />
       </div>
       <div>
         <label className="text-sm font-medium">نام</label>
