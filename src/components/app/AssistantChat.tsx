@@ -65,7 +65,7 @@ export function AssistantChat({ uploadId }: { uploadId?: string }) {
       <div>
         <div className="font-bold">دستیار هوشمند</div>
         <div className="muted text-sm mt-1">
-          درباره داده‌ها یا اقدامات رشد سوال ارسال پیام. پاسخ‌ها بر اساس داده‌های همین آپلود است.
+          درباره داده‌ها یا اقدامات رشد سؤال بپرس. پاسخ‌ها بر اساس داده‌های همین آپلود است.
         </div>
       </div>
 
