@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   await db.ticket.create({
     data: {
       userId: user.id,
-      phone: user.phone,
+      phone: user.phone || "",
       type: "report",
       message: String(message).slice(0, 1000),
       uploadId: uploadId || null
