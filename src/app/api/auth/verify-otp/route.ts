@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
     const current = await getCurrentUser();
     const existing = await db.user.findUnique({ where: { phone: String(phone) } });
-    if (current && !current.phone) {
+    if (current && current.phone !== String(phone)) {
       if (existing && existing.id !== current.id) return NextResponse.json({ error: "این شماره به حساب دیگری متصل است. ابتدا با همان حساب وارد شوید." }, { status: 409 });
       if (!current.otpCode || !current.otpExpiresAt) return NextResponse.json({ error: "ابتدا کد تأیید را درخواست کنید" }, { status: 400 });
       if (current.otpExpiresAt < new Date()) return NextResponse.json({ error: "کد منقضی شده. دوباره درخواست کن." }, { status: 400 });
