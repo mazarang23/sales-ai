@@ -54,7 +54,7 @@ export default async function DashboardHome() {
                       ستون‌ها
                     </Link>
                     <Link href={`/dashboard/${u.id}`} className="btn-primary text-xs">
-                      داشبورد
+                      تحلیل
                     </Link>
                     <Link href="/consultants" className="btn-ghost text-xs text-emerald-700 border-emerald-300">
                       رزرو مشاور
