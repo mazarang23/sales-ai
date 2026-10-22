@@ -8,12 +8,10 @@ export function MentorCTA() {
           <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
             <div>
               <h3 className="text-2xl font-bold">
-                مشاور رشد هستی؟ درآمدت را با فروشیار بساز.
+                به کسب‌وکارها برای رشد فروش کمک می‌کنی؟
               </h3>
               <p className="muted mt-3 text-sm leading-7 max-w-2xl">
-                پروفایلت را بساز، بعد از تایید در لیست مشاورین قرار بگیر،
-                درخواست جلسه بگیر، و از هر جلسه ۸۰٪ مبلغ را دریافت کن.
-                پلتفرم، جذب مشتری و مدیریت جلسات را برایت انجام می‌دهد.
+                پروفایل حرفه‌ای خودت را بساز، درخواست مشاوره دریافت کن و جلساتت را از همین‌جا مدیریت کن. پس از تأیید، مشتریان می‌توانند تخصص و تعرفه‌ات را ببینند.
               </p>
             </div>
             <Link href="/consultant/register" className="btn-primary px-6 py-3 whitespace-nowrap">

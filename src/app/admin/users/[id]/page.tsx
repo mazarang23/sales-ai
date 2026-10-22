@@ -41,6 +41,8 @@ export default async function AdminUserDetail({ params }: { params: { id: string
         <Stat label="صنف" value={user.industry || "—"} />
         <Stat label="نقش" value={user.role === "ADMIN" ? "ادمین" : "کاربر"} />
         <Stat label="تعداد آپلود" value={formatNum(user._count.uploads)} />
+        <Stat label="پلن فعلی" value={planLabel(user.plan)} />
+        <Stat label="اعتبار پلن" value={expiryLabel(user.planExpiresAt)} />
         <Stat
           label="آخرین فعالیت"
           value={user.lastSeenAt ? formatDate(user.lastSeenAt) : "—"}
@@ -95,3 +97,5 @@ function Stat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+function planLabel(plan: string) { return ({ free: "رایگان", pro: "رشد", business: "حرفه‌ای" } as Record<string, string>)[plan] || plan; }
+function expiryLabel(date: Date | null) { if (!date) return "بدون تاریخ انقضا"; const days = Math.ceil((date.getTime() - Date.now()) / 86400000); return days <= 0 ? "منقضی شده" : String(days) + " روز باقی‌مانده"; }
