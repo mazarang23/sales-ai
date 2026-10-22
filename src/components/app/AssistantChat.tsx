@@ -72,7 +72,7 @@ export function AssistantChat({ uploadId }: { uploadId?: string }) {
       {messages.length > 0 && (
         <div
           ref={scrollRef}
-          className="max-h-96 overflow-y-auto space-y-3 rounded-xl bg-slate-50 p-4"
+          className="max-h-96 overflow-y-auto space-y-4 rounded-2xl border border-slate-100 bg-gradient-to-b from-slate-50 to-white p-4 sm:p-5"
         >
           {messages.map((m, i) => (
             <div
