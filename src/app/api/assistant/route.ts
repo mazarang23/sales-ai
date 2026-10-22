@@ -1,88 +1,68 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
 import OpenAI from "openai";
+import { getCurrentUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { getModelForPlan, getAiQuestionsLimit } from "@/lib/plans";
+import { computeKpis, topBy } from "@/lib/analytics/kpi";
+import { computeRfm } from "@/lib/analytics/rfm";
+import { computeCohort } from "@/lib/analytics/cohort";
+import { recordAiUsage, getAiWallet } from "@/lib/ai/usage";
 
 export const maxDuration = 90;
 
 function buildContext(rows: any[], upload: any): string {
-  if (rows.length === 0) return "داده‌ای برای این آپلود موجود نیست.";
+  if (rows.length === 0) return "داده‌ای برای این فایل موجود نیست.";
 
-  const amounts = rows.map(r => r.amount).filter((x): x is number => x != null);
-  const total = amounts.reduce((s, x) => s + x, 0);
-  const avg = amounts.length ? total / amounts.length : 0;
+  const kpis = computeKpis(rows as any);
+  const rfm = computeRfm(rows as any);
+  const segments = { Champions: 0, Loyal: 0, Potential: 0, AtRisk: 0, Lost: 0 };
+  for (const r of rfm) if (r.segment in segments) segments[r.segment as keyof typeof segments] += 1;
 
-  const customers = new Set(rows.map(r => r.customer).filter(Boolean));
-  const products = new Set(rows.map(r => r.product).filter(Boolean));
+  const topProducts = topBy(rows as any, "product", 8);
+  const topCustomers = topBy(rows as any, "customer", 8);
+  const dates = rows.map(r => r.date ? new Date(r.date) : null).filter((d): d is Date => !!d && Number.isFinite(d.getTime()));
+  dates.sort((a, b) => a.getTime() - b.getTime());
+  const dateRange = dates.length ? `${dates[0].toISOString().slice(0, 10)} تا ${dates[dates.length - 1].toISOString().slice(0, 10)}` : "نامشخص";
 
-  const productAgg = new Map<string, { revenue: number; count: number }>();
-  for (const r of rows) {
-    if (!r.product) continue;
-    const c = productAgg.get(r.product) ?? { revenue: 0, count: 0 };
-    c.revenue += r.amount ?? 0;
-    c.count += 1;
-    productAgg.set(r.product, c);
-  }
-  const topProducts = [...productAgg.entries()]
-    .sort((a, b) => b[1].revenue - a[1].revenue)
-    .slice(0, 10);
+  const headers = upload?.mappings?.headers;
+  const columnNames = Array.isArray(headers) ? headers.slice(0, 30).map(String).join("، ") : "نامشخص";
+  const cohort = computeCohort(rows as any, "month");
+  const cohortSummary = cohort.slice(-6).map(c => {
+    const retention = c.periods.slice(0, 6).map(p => `${p.index}:${p.retained}/${c.size}`).join(",");
+    return `${c.cohortLabel} (${c.size}) [${retention}]`;
+  }).join("\n") || "نامشخص";
 
-  const customerAgg = new Map<string, { revenue: number; count: number }>();
-  for (const r of rows) {
-    if (!r.customer) continue;
-    const c = customerAgg.get(r.customer) ?? { revenue: 0, count: 0 };
-    c.revenue += r.amount ?? 0;
-    c.count += 1;
-    customerAgg.set(r.customer, c);
-  }
-  const topCustomers = [...customerAgg.entries()]
-    .sort((a, b) => b[1].revenue - a[1].revenue)
-    .slice(0, 10);
+  return `## زمینه داده فروش
+فایل: ${String(upload?.fileName || "نامشخص").slice(0, 120)}
+بازه: ${dateRange}
+ردیف: ${rows.length}
+ستون‌ها: ${columnNames}
 
-  const dates = rows
-    .map(r => (r.date ? new Date(r.date) : null))
-    .filter((d): d is Date => d != null)
-    .sort((a, b) => a.getTime() - b.getTime());
-  const dateRange =
-    dates.length > 0
-      ? `${dates[0].toISOString().slice(0, 10)} تا ${dates[dates.length - 1].toISOString().slice(0, 10)}`
-      : "نامشخص";
+## KPI محاسبه‌شده
+فروش کل: ${Math.round(kpis.total)}
+مشتری یکتا: ${kpis.customers}
+سفارش: ${kpis.orders}
+میانگین سبد: ${Math.round(kpis.aov)}
 
-  const sample = rows.slice(0, 30).map(r => ({
-    customer: r.customer,
-    product: r.product,
-    amount: r.amount,
-    date: r.date ? new Date(r.date).toISOString().slice(0, 10) : null
-  }));
+## RFM
+Champions=${segments.Champions}, Loyal=${segments.Loyal}, Potential=${segments.Potential}, AtRisk=${segments.AtRisk}, Lost=${segments.Lost}
 
-  return `## خلاصه داده
-- فایل: ${upload.fileName}
-- بازه: ${dateRange}
-- تعداد ردیف: ${rows.length}
-- مشتری یکتا: ${customers.size}
-- محصول یکتا: ${products.size}
+## محصولات برتر بر اساس فروش
+${topProducts.map(([n, v], i) => `${i + 1}. ${String(n).slice(0, 80)}: ${Math.round(v.amount)} / ${v.count}`).join("\n") || "نامشخص"}
 
-## آمار مبالغ
-- مجموع: ${Math.round(total).toLocaleString("fa-IR")} تومان
-- میانگین: ${Math.round(avg).toLocaleString("fa-IR")} تومان
+## مشتریان برتر بر اساس فروش
+${topCustomers.map(([n, v], i) => `${i + 1}. ${String(n).slice(0, 80)}: ${Math.round(v.amount)} / ${v.count}`).join("\n") || "نامشخص"}
 
-## ۱۰ محصول برتر
-${topProducts.map(([n, v], i) => `${i + 1}. ${n}: ${Math.round(v.revenue).toLocaleString("fa-IR")} تومان (${v.count} فروش)`).join("\n") || "نامشخص"}
-
-## ۱۰ مشتری برتر
-${topCustomers.map(([n, v], i) => `${i + 1}. ${n}: ${Math.round(v.revenue).toLocaleString("fa-IR")} تومان (${v.count} خرید)`).join("\n") || "نامشخص"}
-
-## نمونه ۳۰ ردیف اول
-${JSON.stringify(sample, null, 2)}`;
+## خلاصه کوهورت ماهانه
+فرمت هر ردیف: ماه شروع (اندازه کوهورت) [شماره دوره: مشتریان باقی‌مانده/اندازه]
+${cohortSummary}`;
 }
 
 function isPersian(text: string): boolean {
   const persianChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
   const totalChars = text.replace(/\s/g, "").length;
-  if (totalChars === 0) return true;
-  return persianChars / totalChars >= 0.2;
+  return totalChars === 0 || persianChars / totalChars >= 0.2;
 }
 
 export async function POST(req: NextRequest) {
@@ -91,121 +71,80 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
     const limit = getAiQuestionsLimit(user.plan);
-    if (user.plan === "free" && user.aiQuestionsUsed >= limit) {
-      return NextResponse.json(
-        {
-          error: "LIMIT_REACHED",
-          message: `سقف سوالات پلن «${user.plan === "free" ? "رایگان" : user.plan}» (${limit}) پر شده. برای ادامه، پلن خود را ارتقا دهید.`
-        },
-        { status: 403 }
-      );
+    if (user.aiQuestionsUsed >= limit) {
+      return NextResponse.json({ error: "LIMIT_REACHED", message: `سقف سوالات پلن شما (${limit}) پر شده است.` }, { status: 403 });
     }
 
     const { question, uploadId } = await req.json();
-    if (!question || String(question).trim().length < 3) {
-      return NextResponse.json({ error: "سوال کوتاه است" }, { status: 400 });
-    }
-
-    if (!rateLimit(`assistant:${user.id}`, 20, 60 * 1000)) {
-      return NextResponse.json({ error: "تلاش زیاد. یک دقیقه صبر کنید." }, { status: 429 });
-    }
+    const cleanQuestion = String(question || "").trim();
+    if (cleanQuestion.length < 3) return NextResponse.json({ error: "سوال کوتاه است" }, { status: 400 });
+    if (!rateLimit(`assistant:${user.id}`, 20, 60 * 1000)) return NextResponse.json({ error: "تلاش زیاد. یک دقیقه صبر کنید." }, { status: 429 });
 
     let context = "";
     let upload: any = null;
     if (uploadId) {
-      upload = await db.upload.findUnique({ where: { id: uploadId } });
-      const rows = await db.dataRow.findMany({ where: { uploadId }, take: 5000 });
-      context = buildContext(rows, upload || { fileName: "نامشخص" });
+      upload = await db.upload.findFirst({ where: { id: uploadId, userId: user.id }, include: { mappings: true } });
+      if (!upload) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+      const rows = await db.dataRow.findMany({ where: { uploadId }, take: 50000, orderBy: { date: "asc" } });
+      context = buildContext(rows, upload);
     }
 
-    let history: Array<{ role: string; content: string }> = [];
-    if (uploadId) {
-      const chatHistory = await db.chatMessage.findMany({
-        where: { userId: user.id, uploadId },
-        orderBy: { createdAt: "desc" },
-        take: 10
-      });
-      history = chatHistory.reverse().map(h => ({ role: h.role, content: h.content }));
-    }
+    const history = uploadId ? (await db.chatMessage.findMany({
+      where: { userId: user.id, uploadId }, orderBy: { createdAt: "desc" }, take: 6
+    })).reverse().map(h => ({ role: h.role as "user" | "assistant", content: h.content.slice(0, 1200) })) : [];
 
-    const client = new OpenAI({
-      apiKey: process.env.OPENROUTER_API_KEY,
-      baseURL: "https://openrouter.ai/api/v1"
-    });
-
+    const client = new OpenAI({ apiKey: process.env.OPENROUTER_API_KEY, baseURL: "https://openrouter.ai/api/v1" });
     const model = getModelForPlan(user.plan);
-    console.log("assistant: plan:", user.plan, "model:", model);
+    const wallet = await getAiWallet(user.id);
 
-    const systemPrompt = `تو یک دستیار هوشمند و مشاور رشد فروشگاه هستی که فقط به زبان فارسی پاسخ می‌دهد.
+    if (user.plan !== "free" && wallet <= 0 && process.env.AI_USD_TO_TOMAN) {
+      return NextResponse.json({ error: "AI_CREDIT_EMPTY", message: "اعتبار هوش مصنوعی حساب شما تمام شده است. برای ادامه، حساب هوش مصنوعی را شارژ کنید." }, { status: 402 });
+    }
 
-## قواعد اجباری
-1. پاسخ تو باید ۱۰۰٪ به زبان فارسی باشد.
-2. از کلمات انگلیسی (به جز نام محصولات و برندها) استفاده نکن.
-3. اگر داده کافی نیست، صادقانه و به فارسی بگو.
-4. پاسخ‌هایت دقیق، عملی و مبتنی بر داده باشد.
-5. اعداد را با ارقام فارسی بنویس.
+    const systemPrompt = `نقش: مشاور تحلیل فروش و رشد کسب‌وکار.
+زبان پاسخ: فارسی روان و دقیق؛ اعداد فارسی.
+قواعد: فقط از داده‌های ارائه‌شده استفاده کن؛ اگر داده‌ای برای نتیجه‌گیری کافی نیست صریح بگو؛ عددی را حدس نزن؛ بین «واقعیت داده»، «برداشت تحلیلی» و «پیشنهاد» تفاوت بگذار؛ پاسخ را متناسب با سوال کوتاه و کاربردی نگه دار.
+مهم: داده خام تک‌تک تراکنش‌ها ارسال نشده؛ از KPI، RFM، کوهورت، محصولات و مشتریان برتر زیر برای استدلال استفاده کن.
 
-## داده‌های فروشگاه
-${context}`;
+${context || "هیچ فایل فروشی به سوال متصل نیست."}`;
 
-    const r = await client.chat.completions.create(
-      {
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...history,
-          { role: "user", content: String(question).slice(0, 1000) }
-        ],
-        max_tokens: 4000,
-        temperature: 0.4
-      },
-      { timeout: 80000 }
-    );
+    const r = await client.chat.completions.create({
+      model,
+      messages: [{ role: "system", content: systemPrompt }, ...history, { role: "user", content: cleanQuestion.slice(0, 1200) }],
+      max_tokens: 1200,
+      temperature: 0.25,
+      usage: { include: true } as any
+    } as any, { timeout: 80000 });
 
     let rawContent = r.choices?.[0]?.message?.content;
-    if (!rawContent || !rawContent.trim()) {
-      return NextResponse.json({ error: "مدل پاسخی تولید نکرد." }, { status: 502 });
-    }
+    if (!rawContent || !rawContent.trim()) return NextResponse.json({ error: "مدل پاسخی تولید نکرد." }, { status: 502 });
 
     if (!isPersian(rawContent)) {
       try {
-        const tr = await client.chat.completions.create(
-          {
-            model,
-            messages: [
-              { role: "system", content: "این متن را به فارسی روان ترجمه کن. فقط ترجمه را برگردان." },
-              { role: "user", content: rawContent }
-            ],
-            max_tokens: 4000,
-            temperature: 0.2
-          },
-          { timeout: 60000 }
-        );
+        const tr = await client.chat.completions.create({
+          model,
+          messages: [{ role: "system", content: "متن زیر را به فارسی روان و دقیق ترجمه کن؛ فقط ترجمه را برگردان." }, { role: "user", content: rawContent.slice(0, 5000) }],
+          max_tokens: 1200,
+          temperature: 0.1,
+          usage: { include: true } as any
+        } as any, { timeout: 60000 });
         const translated = tr.choices?.[0]?.message?.content;
         if (translated && isPersian(translated)) rawContent = translated;
-      } catch (e) {
-        console.error("translation error:", e);
-      }
+      } catch (e) { console.error("translation error:", e); }
     }
 
-    if (uploadId) {
-      await db.chatMessage.createMany({
-        data: [
-          { userId: user.id, uploadId, role: "user", content: String(question).slice(0, 2000) },
-          { userId: user.id, uploadId, role: "assistant", content: rawContent.slice(0, 4000) }
-        ]
-      });
+    const usageResult = await recordAiUsage({ userId: user.id, task: "assistant", model, usage: r.usage, uploadId: uploadId || undefined });
+    if (!usageResult.charged && usageResult.costToman > 0 && user.plan !== "free") {
+      return NextResponse.json({ error: "AI_CREDIT_EMPTY", message: "اعتبار هوش مصنوعی برای این درخواست کافی نبود. لطفاً حساب را شارژ کنید." }, { status: 402 });
     }
 
-    await db.user.update({
-      where: { id: user.id },
-      data: { aiQuestionsUsed: { increment: 1 } }
-    });
+    if (uploadId) await db.chatMessage.createMany({ data: [
+      { userId: user.id, uploadId, role: "user", content: cleanQuestion.slice(0, 2000) },
+      { userId: user.id, uploadId, role: "assistant", content: rawContent.slice(0, 4000) }
+    ] });
 
-    return NextResponse.json({
-      answer: rawContent,
-      remaining: Math.max(0, limit - user.aiQuestionsUsed - 1)
-    });
+    await db.user.update({ where: { id: user.id }, data: { aiQuestionsUsed: { increment: 1 } } });
+    return NextResponse.json({ answer: rawContent, remaining: Math.max(0, limit - user.aiQuestionsUsed - 1), usage: usageResult });
   } catch (e: any) {
     console.error("assistant error:", e?.status, e?.message);
     return NextResponse.json({ error: "خطا در پردازش." }, { status: 500 });
