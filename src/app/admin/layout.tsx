@@ -21,7 +21,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <div className="text-xs text-slate-500">فروشیار AI</div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link href="/admin" className="btn-ghost text-sm font-medium">
+              داشبورد
+            </Link>
             <span className="hidden sm:block text-sm text-slate-500 font-mono" dir="ltr">
               {user.phone}
             </span>
