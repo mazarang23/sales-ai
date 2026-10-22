@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import Link from "next/link";
 import { formatNum, formatDate } from "@/lib/utils";
 import { AppNav } from "@/components/app/AppNav";
-import { getAiQuestionsLimit, getExplainLimit, getGrowthPlansLimit, getPlan } from "@/lib/plans";
+import { getAiQuestionsLimit, getExplainLimit, getGrowthPlansLimit, getPlan, PLANS } from "@/lib/plans";
 import { getAiUsageSummary } from "@/lib/ai/usage";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export default async function DashboardHome() {
     db.insight.count({ where: { kind: "explain", createdAt: { gte: monthStart }, upload: { userId: user.id } } }),
     db.recommendation.count({ where: { createdAt: { gte: monthStart }, upload: { userId: user.id } } })
   ]);
-  const plan = getPlan(user.plan);
+  const plan = PLANS[getPlan(user.plan)];
   const limits = { ai: getAiQuestionsLimit(user.plan), explain: getExplainLimit(user.plan), growth: getGrowthPlansLimit(user.plan) };
   return <>
     <AppNav current="dashboard" />
