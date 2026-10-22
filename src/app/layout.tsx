@@ -3,7 +3,7 @@ import "./globals.css";
 import { vazirmatnVariable } from "next-persian-fonts/vazirmatn-variable";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://foorooshyaar.ir"),
   title: {
     default: "فروشیار AI — تحلیل هوشمند فروش و مشاوره رشد",
     template: "%s | فروشیار AI"
