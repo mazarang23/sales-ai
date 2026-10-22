@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { BlogBody } from "@/components/site/BlogBody";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
       </div>
       <h1 className="h1 mt-2">{p.title}</h1>
       <p className="muted mt-4 text-lg">{p.excerpt}</p>
-      <div className="mt-8 whitespace-pre-wrap leading-8">{p.body}</div>
+      <BlogBody body={p.body} />
     </article>
   );
 }
