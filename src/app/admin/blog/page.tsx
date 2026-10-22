@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { BlogPublishToggle } from "@/components/admin/BlogPublishToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export default async function AdminBlogList() {
               <th className="px-3 py-3 text-right">عنوان</th>
               <th className="px-3 py-3 text-right">slug</th>
               <th className="px-3 py-3 text-right">وضعیت</th>
-              <th className="px-3 py-3 text-right"></th>
+              <th className="px-3 py-3 text-right">عملیات</th>
             </tr>
           </thead>
           <tbody>
