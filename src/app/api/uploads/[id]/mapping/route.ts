@@ -6,7 +6,12 @@ import { parseAmountText } from "@/lib/excel/parse-amount-text";
 import { applyMerges, MergeRule } from "@/lib/excel/merge-columns";
 import { applyCurrency, Currency } from "@/lib/excel/currency";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
@@ -16,7 +21,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const currency: Currency = body.currency || "toman";
 
   const upload = await db.upload.findFirst({
-    where: { id: params.id, userId: user.id },
+    where: { id, userId: user.id },
     include: { mappings: true }
   });
   if (!upload || !upload.mappings) {
@@ -34,12 +39,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const dateVal = fieldMap.date ? raw[fieldMap.date] : null;
     const orderVal = fieldMap.orderId ? raw[fieldMap.orderId] : null;
 
-    // ابتدا parseAmount (عدد)، اگر null شد، parseAmountText (متن فارسی)
     let amount = parseAmount(amountVal);
     if (amount == null) {
       amount = parseAmountText(amountVal);
     }
-    // اعمال واحد پول
     amount = applyCurrency(amount, currency);
 
     await db.dataRow.update({
@@ -58,17 +61,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const originalHeaders = (upload.mappings.headers as string[]) || [];
   const existingMerged = (upload.mappings.mergedColumns as any[]) || [];
-  const baseHeaders = originalHeaders.filter(h => !existingMerged.some((m: any) => m.name === h));
+  const baseHeaders = originalHeaders.filter(
+    h => !existingMerged.some((m: any) => m.name === h)
+  );
   const mergeNames = merges.map(m => m.name).filter(Boolean);
   const finalHeaders = [...baseHeaders, ...mergeNames];
 
   await db.mapping.update({
     where: { uploadId: upload.id },
-    data: {
-      fieldMap,
-      mergedColumns: merges as any,
-      headers: finalHeaders
-    }
+    data: { fieldMap, mergedColumns: merges as any, headers: finalHeaders }
+  });
+
+  // پاک کردن کش کوهورت (چون داده‌ها تغییر کردند)
+  await db.insight.deleteMany({
+    where: { uploadId: upload.id, kind: "cohort" }
   });
 
   return NextResponse.json({ ok: true, updated, headers: finalHeaders, currency });

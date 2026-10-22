@@ -7,7 +7,7 @@ export function SiteFooter() {
         <div className="md:col-span-2">
           <div className="font-black text-lg">فروشیار AI</div>
           <p className="muted mt-3 text-sm leading-6">
-            تحلیل هوشمند فروش فروشگاه‌های ایرانی. اکسل بده، رشد بگیر.
+            تحلیل هوشمند فروش + مشاوره تخصصی، برای فروشگاه‌های ایرانی.
           </p>
         </div>
         <div>
@@ -21,7 +21,7 @@ export function SiteFooter() {
         <div>
           <div className="font-semibold mb-3">مشاورین</div>
           <ul className="space-y-2 text-sm text-slate-600">
-            <li><Link href="/#consultants">مشاورین برتر</Link></li>
+            <li><Link href="/consultants">لیست مشاورین</Link></li>
             <li><Link href="/consultant/register">ثبت‌نام مشاور</Link></li>
             <li><Link href="/consultant/login">ورود مشاور</Link></li>
           </ul>

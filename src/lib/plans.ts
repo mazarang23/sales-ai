@@ -4,49 +4,50 @@ export const PLANS: Record<Plan, {
   label: string;
   price: number;
   maxRows: number;
-  aiQuestions: number;
-  explainLimit: number;
-  growthPlans: number;
-  model: string;
+  aiQuestions: number;      // تعداد سوال AI در ماه (assistant)
+  explainLimit: number;     // تعداد «توضیح بیشتر» در ماه
+  growthPlans: number;      // تعداد برنامه رشد
+  model: string;            // مدل AI
   features: string[];
-  tagline: string;
-  support: string;
+  tagline: string;          // پیام بازاریابی
+  support: string;          // placeholder (بدون داده)
 }> = {
   free: {
-    label: "شروع",
+    label: "رایگان",
     price: 0,
     maxRows: 5000,
-    aiQuestions: 5,
-    explainLimit: 3,
-    growthPlans: 3,
+    aiQuestions: 1,
+    explainLimit: 1,
+    growthPlans: 1,
     model: "openrouter/free",
-    tagline: "فروشیار را روی کسب‌وکارت امتحان کن.",
-    support: "پشتیبانی پایه",
+    tagline: "شروع کن، ارزش را ببین. بدون کارت بانکی.",
+    support: "",
     features: [
-      "راه‌اندازی رایگان",
-      "آپلود تا ۵٬۰۰۰ ردیف فروش",
-      "داشبورد فروش و مشتریان",
-      "۵ سؤال از دستیار هوشمند",
-      "۳ پیشنهاد رشد"
+      "آپلود تا ۵٬۰۰۰ ردیف",
+      "داشبورد اولیه + تحلیل RFM",
+      "تحلیل کوهورت",
+      "۱ سوال از دستیار هوشمند",
+      "۱ برنامه رشد",
+      "۱ توضیح بیشتر روی پیشنهاد"
     ]
   },
   pro: {
     label: "رشد",
     price: 890000,
     maxRows: 50000,
-    aiQuestions: 100,
-    explainLimit: 30,
-    growthPlans: 30,
+    aiQuestions: 50,
+    explainLimit: 20,
+    growthPlans: 20,
     model: "openrouter/free",
-    tagline: "برای کسب‌وکاری که می‌خواهد فروش را جدی‌تر دنبال کند.",
-    support: "پشتیبانی اولویت‌دار",
+    tagline: "برای فروشگاهی که جدی است.",
+    support: "",
     features: [
-      "تا ۵۰٬۰۰۰ ردیف فروش",
-      "تحلیل کامل مشتری و محصول",
-      "۱۰۰ سؤال از دستیار هوشمند",
-      "۳۰ برنامه رشد",
-      "گزارش PDF",
-      "پشتیبانی اولویت‌دار"
+      "آپلود تا ۵۰٬۰۰۰ ردیف",
+      "تحلیل کامل RFM و کوهورت",
+      "۵۰ سوال از دستیار هوشمند در ماه",
+      "۲۰ برنامه رشد",
+      "۲۰ توضیح بیشتر روی پیشنهاد",
+      "خروجی PDF"
     ]
   },
   business: {
@@ -57,15 +58,16 @@ export const PLANS: Record<Plan, {
     explainLimit: 100,
     growthPlans: 99999,
     model: "google/gemini-3.5-flash-lite",
-    tagline: "یک نیروی فروش هوشمند برای کسب‌وکار حرفه‌ای.",
-    support: "پشتیبانی اختصاصی",
+    tagline: "کیفیت یک تیم مارکتینگ داخلی، با کسری از هزینه.",
+    support: "",
     features: [
-      "تا ۵۰۰٬۰۰۰ ردیف فروش",
-      "همه امکانات پلن رشد",
-      "۵۰۰ سؤال از دستیار هوشمند",
-      "مدل هوش مصنوعی حرفه‌ای",
+      "آپلود تا ۵۰۰٬۰۰۰ ردیف",
+      "همه‌چیز در پلن رشد",
+      "۵۰۰ سوال از دستیار هوشمند در ماه",
+      "مدل AI حرفه‌ای (Gemini)",
+      "۱۰۰ توضیح بیشتر روی پیشنهاد",
       "برنامه رشد نامحدود",
-      "اولویت در خدمات مشاوره"
+      "اولویت در رزرو مشاورین"
     ]
   }
 };
