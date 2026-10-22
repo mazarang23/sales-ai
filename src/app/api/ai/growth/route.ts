@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     if (count >= growthLimit) return NextResponse.json({ error: "LIMIT_REACHED", message: `سقف برنامه رشد پلن شما (${growthLimit} در ماه) پر شده است.` }, { status: 403 });
 
     const wallet = await getAiWallet(user.id);
-    if (user.plan !== "free" && wallet <= 0 && process.env.AI_USD_TO_TOMAN) return NextResponse.json({ error: "AI_CREDIT_EMPTY", message: "اعتبار هوش مصنوعی حساب شما تمام شده است. لطفاً حساب را شارژ کنید." }, { status: 402 });
+    if (user.plan !== "free" && wallet <= 0) return NextResponse.json({ error: "AI_CREDIT_EMPTY", message: "اعتبار هوش مصنوعی حساب شما تمام شده است. لطفاً حساب را شارژ کنید." }, { status: 402 });
 
     const rows = await db.dataRow.findMany({ where: { uploadId }, take: 500000, orderBy: { date: "asc" } });
     if (!rows.length) return NextResponse.json({ error: "برای این فایل داده‌ای جهت تحلیل پیدا نشد." }, { status: 400 });
