@@ -65,7 +65,7 @@ export function AssistantChat({ uploadId }: { uploadId?: string }) {
       <div>
         <div className="font-bold">دستیار هوشمند</div>
         <div className="muted text-sm mt-1">
-          درباره داده‌ها یا اقدامات رشد سوال بپرس. پاسخ‌ها بر اساس داده‌های همین آپلود است.
+          درباره داده‌ها یا اقدامات رشد سوال ارسال پیام. پاسخ‌ها بر اساس داده‌های همین آپلود است.
         </div>
       </div>
 
@@ -103,17 +103,17 @@ export function AssistantChat({ uploadId }: { uploadId?: string }) {
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
         <input
-          className="input flex-1"
+          className="input flex-1 border-0 shadow-none focus:ring-0"
           value={question}
           onChange={e => setQuestion(e.target.value)}
-          placeholder="مثلاً: چطور فروش را ۲۰٪ افزایش بدهم؟"
+          placeholder="سؤالت درباره فروش و مشتری‌ها را بنوی…"
           onKeyDown={e => e.key === "Enter" && ask()}
           disabled={busy}
         />
         <button onClick={ask} disabled={busy || !question.trim()} className="btn-primary">
-          {busy ? "..." : "بپرس"}
+          {busy ? "..." : "ارسال پیام"}
         </button>
       </div>
 
