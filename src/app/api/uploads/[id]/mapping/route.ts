@@ -6,6 +6,11 @@ import { parseAmountText } from "@/lib/excel/parse-amount-text";
 import { applyMerges, MergeRule } from "@/lib/excel/merge-columns";
 import { applyCurrency, Currency } from "@/lib/excel/currency";
 
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
+const UPDATE_CONCURRENCY = 25;
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -30,33 +35,38 @@ export async function POST(
 
   const rows = await db.dataRow.findMany({ where: { uploadId: upload.id } });
 
-  let updated = 0;
-  for (const r of rows) {
-    const raw = applyMerges(r.raw as any, merges);
-    const customerVal = fieldMap.customer ? raw[fieldMap.customer] : null;
-    const productVal = fieldMap.product ? raw[fieldMap.product] : null;
-    const amountVal = fieldMap.amount ? raw[fieldMap.amount] : null;
-    const dateVal = fieldMap.date ? raw[fieldMap.date] : null;
-    const orderVal = fieldMap.orderId ? raw[fieldMap.orderId] : null;
+  // The old implementation updated every row one-by-one. For large files that
+  // made the mapping request take a very long time and often prevented the
+  // redirect to the analysis dashboard. Keep database concurrency bounded,
+  // but update rows in parallel batches.
+  for (let i = 0; i < rows.length; i += UPDATE_CONCURRENCY) {
+    const batch = rows.slice(i, i + UPDATE_CONCURRENCY);
+    await Promise.all(
+      batch.map(async r => {
+        const raw = applyMerges(r.raw as any, merges);
+        const customerVal = fieldMap.customer ? raw[fieldMap.customer] : null;
+        const productVal = fieldMap.product ? raw[fieldMap.product] : null;
+        const amountVal = fieldMap.amount ? raw[fieldMap.amount] : null;
+        const dateVal = fieldMap.date ? raw[fieldMap.date] : null;
+        const orderVal = fieldMap.orderId ? raw[fieldMap.orderId] : null;
 
-    let amount = parseAmount(amountVal);
-    if (amount == null) {
-      amount = parseAmountText(amountVal);
-    }
-    amount = applyCurrency(amount, currency);
+        let amount = parseAmount(amountVal);
+        if (amount == null) amount = parseAmountText(amountVal);
+        amount = applyCurrency(amount, currency);
 
-    await db.dataRow.update({
-      where: { id: r.id },
-      data: {
-        raw,
-        customer: customerVal != null ? String(customerVal) : null,
-        product: productVal != null ? String(productVal) : null,
-        amount,
-        date: parseDate(dateVal),
-        orderId: orderVal != null ? String(orderVal) : null
-      }
-    });
-    updated++;
+        await db.dataRow.update({
+          where: { id: r.id },
+          data: {
+            raw,
+            customer: customerVal != null ? String(customerVal) : null,
+            product: productVal != null ? String(productVal) : null,
+            amount,
+            date: parseDate(dateVal),
+            orderId: orderVal != null ? String(orderVal) : null
+          }
+        });
+      })
+    );
   }
 
   const originalHeaders = (upload.mappings.headers as string[]) || [];
@@ -72,10 +82,9 @@ export async function POST(
     data: { fieldMap, mergedColumns: merges as any, headers: finalHeaders }
   });
 
-  // پاک کردن کش کوهورت (چون داده‌ها تغییر کردند)
   await db.insight.deleteMany({
     where: { uploadId: upload.id, kind: "cohort" }
   });
 
-  return NextResponse.json({ ok: true, updated, headers: finalHeaders, currency });
+  return NextResponse.json({ ok: true, updated: rows.length, headers: finalHeaders, currency });
 }
