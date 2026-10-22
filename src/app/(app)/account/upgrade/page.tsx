@@ -15,6 +15,7 @@ const PLAN_LABELS: Record<string, string> = {
 };
 
 export default async function AccountPage() {
+  redirect("/account");
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
