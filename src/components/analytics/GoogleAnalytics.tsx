@@ -4,9 +4,12 @@ import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 
+const GA_MEASUREMENT_ID =
+  process.env.NEXT_PUBLIC_GA_ID || "G-ZMGEPM4DT9";
+
 declare global {
   interface Window {
-    dataLayer: unknown[];
+    dataLayer: IArguments[] | unknown[];
     gtag: (...args: unknown[]) => void;
   }
 }
@@ -16,8 +19,7 @@ function AnalyticsPageViews() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const measurementId = process.env.NEXT_PUBLIC_GA_ID;
-    if (!measurementId || typeof window.gtag !== "function") return;
+    if (typeof window.gtag !== "function") return;
 
     const query = searchParams?.toString();
     const pagePath = query ? `${pathname}?${query}` : pathname;
@@ -32,9 +34,9 @@ function AnalyticsPageViews() {
 }
 
 export default function GoogleAnalytics() {
-  const measurementId = process.env.NEXT_PUBLIC_GA_ID;
+  const measurementId = GA_MEASUREMENT_ID;
 
-  if (!measurementId || !/^G-[A-Z0-9]+$/.test(measurementId)) return null;
+  if (!/^G-[A-Z0-9]+$/.test(measurementId)) return null;
 
   return (
     <>
