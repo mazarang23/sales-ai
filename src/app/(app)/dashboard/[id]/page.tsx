@@ -13,6 +13,7 @@ import { ReportButton } from "@/components/app/ReportButton";
 import { FeedbackPopup } from "@/components/app/FeedbackPopup";
 import { DeleteUploadButton } from "@/components/app/DeleteUploadButton";
 import { AppNav } from "@/components/app/AppNav";
+import { getOrComputeAnalytics, ANALYTICS_VERSIONS } from "@/lib/analytics/cache";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +28,23 @@ export default async function Dashboard({ params }: { params: Promise<{ id: stri
   const currency = (((upload.mappings?.fieldMap as any)?._currency || "rial") as Currency);
   const money = (value: number | null | undefined) => formatMoney(value, currency);
   const rows = await db.dataRow.findMany({ where: { uploadId: upload.id } });
-  const kpis = computeKpis(rows as any);
-  const topProducts = topBy(rows as any, "product", 8);
-  const rfm = computeRfm(rows as any);
+  const mapping = upload.mappings?.fieldMap ?? {};
+
+  const dashboardAnalytics = await getOrComputeAnalytics({
+    uploadId: upload.id,
+    kind: "dashboard_v2",
+    mapping,
+    algorithmVersion: ANALYTICS_VERSIONS.dashboard,
+    compute: () => {
+      const kpis = computeKpis(rows as any);
+      return {
+        kpis,
+        topProducts: topBy(rows as any, "product", 8),
+        rfm: computeRfm(rows as any)
+      };
+    }
+  });
+  const { kpis, topProducts, rfm } = dashboardAnalytics.data;
   const seg = rfm.reduce((acc, x) => { acc[x.segment] = (acc[x.segment] || 0) + 1; return acc; }, {} as Record<string, number>);
   const existingRec = await db.recommendation.findFirst({ where: { uploadId: upload.id }, orderBy: { createdAt: "desc" } });
 
