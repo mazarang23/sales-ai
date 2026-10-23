@@ -31,11 +31,7 @@ export function mappingVersion(mapping: unknown, algorithmVersion: string): stri
   return `${algorithmVersion}:${digest}`;
 }
 
-export async function readAnalyticsCache<T>(
-  uploadId: string,
-  kind: string,
-  key: string
-): Promise<T | null> {
+export async function readAnalyticsCache<T>(uploadId: string, kind: string, key: string): Promise<T | null> {
   const insight = await db.insight.findFirst({
     where: { uploadId, kind },
     orderBy: { createdAt: "desc" },
@@ -47,19 +43,9 @@ export async function readAnalyticsCache<T>(
   return payload.data as T;
 }
 
-export async function writeAnalyticsCache(
-  uploadId: string,
-  kind: string,
-  key: string,
-  version: string,
-  data: JsonValue
-): Promise<void> {
+export async function writeAnalyticsCache(uploadId: string, kind: string, key: string, version: string, data: JsonValue): Promise<void> {
   await db.insight.create({
-    data: {
-      uploadId,
-      kind,
-      payload: { key, version, data } as any
-    }
+    data: { uploadId, kind, payload: { key, version, data } as any }
   });
 }
 
@@ -70,7 +56,7 @@ export async function getOrComputeAnalytics<T>(args: {
   algorithmVersion: string;
   compute: () => Promise<T> | T;
 }): Promise<{ data: T; cached: boolean }> {
-  const key = mappingVersion(args.mapping, args.algorithmVersion);
+  const key = `${args.uploadId}:${mappingVersion(args.mapping, args.algorithmVersion)}`;
   const cached = await readAnalyticsCache<T>(args.uploadId, args.kind, key);
   if (cached !== null) return { data: cached, cached: true };
 
