@@ -1,4 +1,4 @@
-import { ZarinPal } from "zarinpal-node-sdk";
+import ZarinPal from "zarinpal-node-sdk";
 
 const merchantId = process.env.ZARINPAL_MERCHANT_ID;
 
