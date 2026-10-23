@@ -1,4 +1,5 @@
 import { Row } from "./kpi";
+import { normalizeCustomer } from "./customer";
 
 export type Segment = "Champions" | "Loyal" | "Potential" | "AtRisk" | "Lost";
 export type RfmCustomer = {
@@ -13,12 +14,13 @@ export type RfmCustomer = {
  */
 export function computeRfm(rows: Row[]): RfmCustomer[] {
   const validRows = (Array.isArray(rows) ? rows : []).filter(r =>
-    r && typeof r.customer === "string" && r.customer.trim().length > 0
+    r && typeof r.customer === "string" && normalizeCustomer(r.customer).length > 0
   ).map(r => {
     const timestamp = r.date ? new Date(r.date).getTime() : 0;
     return {
       ...r,
       customer: (r.customer as string).trim(),
+      customerKey: normalizeCustomer(r.customer),
       timestamp: Number.isFinite(timestamp) && timestamp > 0 ? timestamp : 0,
       amount: typeof r.amount === "number" && Number.isFinite(r.amount) ? r.amount : 0
     };
@@ -29,7 +31,7 @@ export function computeRfm(rows: Row[]): RfmCustomer[] {
   }>();
 
   for (const row of validRows) {
-    const customerKey = row.customer!.normalize("NFKC").replace(/[يى]/g, "ی").replace(/ك/g, "ک").replace(/\s+/g, " ").trim().toLocaleLowerCase("fa-IR");
+    const customerKey = row.customerKey;
     const value = byCustomer.get(customerKey) ?? {
       name: row.customer!, first: 0, last: 0, sum: 0, orderIds: new Set<string>(), rowsWithoutOrderId: 0
     };
