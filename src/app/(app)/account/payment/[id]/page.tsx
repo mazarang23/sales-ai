@@ -5,6 +5,7 @@ import { PLANS } from "@/lib/plans";
 import { getPaymentInfo } from "@/lib/payment-info";
 import { ManualPaymentForm } from "@/components/app/ManualPaymentForm";
 import { BackButton } from "@/components/app/BackButton";
+import { CopyTextButton } from "@/components/app/CopyTextButton";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "پرداخت دستی" };
@@ -73,5 +74,5 @@ export default async function ManualPaymentPage({ params }: { params: Promise<{ 
 }
 
 function Info({ label, value, copy }: { label: string; value: string; copy?: boolean }) {
-  return <div className="flex items-center justify-between gap-4"><div><div className="text-xs text-slate-500">{label}</div><div className="mt-1 font-bold" dir={label === "به نام" || label === "بانک" ? "rtl" : "ltr"}>{value}</div></div>{copy && <span className="text-[10px] text-slate-400">قابل کپی</span>}</div>;
+  return <div className="flex items-center justify-between gap-4"><div><div className="text-xs text-slate-500">{label}</div><div className="mt-1 font-bold" dir={label === "به نام" || label === "بانک" ? "rtl" : "ltr"}>{value}</div></div>{copy && <CopyTextButton value={value} />}</div>;
 }
