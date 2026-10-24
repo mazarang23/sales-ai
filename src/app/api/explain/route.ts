@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { computeKpis } from "@/lib/analytics/kpi";
 import { explainAction } from "@/lib/ai/growth-agent";
-import { getModelForPlan, getExplainLimit } from "@/lib/plans";
+import { getModelForPlan, getExplainLimit, getEffectivePlan } from "@/lib/plans";
 
 export const maxDuration = 90;
 
@@ -14,8 +14,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
     }
 
-    const explainLimit = getExplainLimit(user.plan);
-    if (user.plan === "free" && user.aiQuestionsUsed >= explainLimit) {
+    const activePlan = getEffectivePlan(user);
+    const explainLimit = getExplainLimit(activePlan);
+    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+    const usedThisMonth = await db.insight.count({ where: { kind: "explain", createdAt: { gte: monthStart }, upload: { userId: user.id } } });
+    if (usedThisMonth >= explainLimit) {
       return NextResponse.json(
         {
           error: "LIMIT_REACHED",
@@ -36,7 +39,7 @@ export async function POST(req: NextRequest) {
     const rows = await db.dataRow.findMany({ where: { uploadId } });
     const kpis = computeKpis(rows as any);
 
-    const model = getModelForPlan(user.plan);
+    const model = getModelForPlan(activePlan);
     console.log("explain: plan:", user.plan, "model:", model);
 
     const result = await explainAction(action, {
@@ -64,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       explanation: result.explanation,
-      remaining: Math.max(0, explainLimit - user.aiQuestionsUsed - 1)
+      remaining: Math.max(0, explainLimit - usedThisMonth - 1)
     });
   } catch (e: any) {
     console.error("explain error:", e?.status, e?.message);
