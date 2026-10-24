@@ -95,6 +95,7 @@ export function BookingForm({ consultantId, hourlyRate, isLoggedIn }: Props) {
     const first = Math.min(start.minutes, end.minutes);
     const last = Math.max(start.minutes, end.minutes) === first ? first + SLOT_MINUTES : Math.max(start.minutes, end.minutes);
     const durationHours = (last - first) / 60;
+    if (durationHours > 8) { setMsg("حداکثر مدت هر جلسه ۸ ساعت است."); setDragStart(null); setDragEnd(null); return; }
     for (let m = first; m < last; m += SLOT_MINUTES) {
       if (isBlocked(start.dayIndex, m, 0.5) || isPast(start.dayIndex, m)) {
         setMsg("بازه انتخاب‌شده شامل زمان رزروشده، گذشته یا خارج از ساعت کاری است. بازه دیگری انتخاب کن.");
