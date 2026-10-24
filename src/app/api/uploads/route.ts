@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   } else {
     const uploadCount = await db.upload.count({ where: { userId: user.id } });
     if (uploadCount >= plan.maxUploads) {
-      return NextResponse.json({ error: "UPLOAD_LIMIT", message: `سقف فایل‌های پلن «${planLabel}» (${plan.maxUploads.toLocaleString("fa-IR")} فایل) پر شده است. برای آپلود فایل جدید، پلن خود را ارتقا دهید.`, maxUploads: plan.maxUploads }, { status: 403 });
+      return NextResponse.json({ error: `سقف فایل‌های پلن «${planLabel}» (${plan.maxUploads.toLocaleString("fa-IR")} فایل) پر شده است. برای آپلود فایل جدید، پلن خود را ارتقا دهید.`, code: "UPLOAD_LIMIT", maxUploads: plan.maxUploads }, { status: 403 });
     }
   }
 
