@@ -93,7 +93,7 @@ export function BookingForm({ consultantId, hourlyRate, isLoggedIn }: Props) {
   function finishSelection(start: DragPoint, end: DragPoint) {
     if (start.dayIndex !== end.dayIndex) { setMsg("برای انتخاب بازه، داخل یک روز کلیک کن و بکش."); return; }
     const first = Math.min(start.minutes, end.minutes);
-    const last = Math.max(start.minutes, end.minutes) + SLOT_MINUTES;
+    const last = Math.max(start.minutes, end.minutes) === first ? first + SLOT_MINUTES : Math.max(start.minutes, end.minutes);
     const durationHours = (last - first) / 60;
     for (let m = first; m < last; m += SLOT_MINUTES) {
       if (isBlocked(start.dayIndex, m, 0.5) || isPast(start.dayIndex, m)) {
@@ -130,7 +130,7 @@ export function BookingForm({ consultantId, hourlyRate, isLoggedIn }: Props) {
 
   const selected = scheduledAt ? `${scheduledAt.replace("T", " • ")} — ${minutesToTime(Number(scheduledAt.slice(11, 13)) * 60 + Number(scheduledAt.slice(14, 16)) + hours * 60)}` : "روی تقویم کلیک کن و بکش تا بازه را انتخاب کنی";
   const preview = dragStart && dragEnd && dragStart.dayIndex === dragEnd.dayIndex
-    ? { dayIndex: dragStart.dayIndex, first: Math.min(dragStart.minutes, dragEnd.minutes), last: Math.max(dragStart.minutes, dragEnd.minutes) + SLOT_MINUTES }
+    ? { dayIndex: dragStart.dayIndex, first: Math.min(dragStart.minutes, dragEnd.minutes), last: Math.max(dragStart.minutes, dragEnd.minutes) === Math.min(dragStart.minutes, dragEnd.minutes) ? Math.min(dragStart.minutes, dragEnd.minutes) + SLOT_MINUTES : Math.max(dragStart.minutes, dragEnd.minutes) }
     : null;
 
   return (
