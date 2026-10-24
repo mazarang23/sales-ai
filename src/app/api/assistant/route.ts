@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import OpenAI from "openai";
 import { getCurrentUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { getModelForPlan, getAiQuestionsLimit } from "@/lib/plans";
+import { getModelForPlan, getAiQuestionsLimit, getEffectivePlan } from "@/lib/plans";
 import { computeKpis, topBy } from "@/lib/analytics/kpi";
 import { computeRfm } from "@/lib/analytics/rfm";
 import { computeCohort } from "@/lib/analytics/cohort";
@@ -28,7 +28,7 @@ function isPersian(text: string): boolean { const p = (text.match(/[\u0600-\u06F
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser(); if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-    const limit = getAiQuestionsLimit(user.plan); const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+    const activePlan = getEffectivePlan(user); const limit = getAiQuestionsLimit(activePlan); const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     const usedThisMonth = await db.chatMessage.count({ where: { userId: user.id, role: "user", createdAt: { gte: monthStart } } });
     if (usedThisMonth >= limit) return NextResponse.json({ error: "LIMIT_REACHED", message: `سقف سوالات پلن شما (${limit} در ماه) پر شده است.` }, { status: 403 });
     const { question, uploadId } = await req.json(); const cleanQuestion = String(question || "").trim(); const cleanUploadId = String(uploadId || "").trim();
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const rows = await db.dataRow.findMany({ where: { uploadId: cleanUploadId }, take: 50000, orderBy: { date: "asc" } });
     const context = buildContext(rows, upload);
     const history = (await db.chatMessage.findMany({ where: { userId: user.id, uploadId: cleanUploadId }, orderBy: { createdAt: "desc" }, take: 6 })).reverse().map(h => ({ role: h.role as "user" | "assistant", content: h.content.slice(0, 1200) }));
-    const client = new OpenAI({ apiKey: process.env.OPENROUTER_API_KEY, baseURL: "https://openrouter.ai/api/v1" }); const model = getModelForPlan(user.plan);
+    const client = new OpenAI({ apiKey: process.env.OPENROUTER_API_KEY, baseURL: "https://openrouter.ai/api/v1" }); const model = getModelForPlan(activePlan);
     const systemPrompt = `نقش: مشاور تحلیل فروش و رشد کسب‌وکار.\nزبان پاسخ: فارسی روان و دقیق؛ اعداد فارسی.\nفقط از داده‌های ارائه‌شده استفاده کن. اگر داده کافی نیست صریح بگو و عدد حدس نزن. بین واقعیت داده، برداشت تحلیلی و پیشنهاد تفاوت بگذار. پاسخ متناسب با سوال و کوتاه باشد.\nداده خام تک‌تک تراکنش‌ها ارسال نشده؛ از KPI، RFM، کوهورت و رتبه‌بندی‌های زیر برای استدلال استفاده کن.\n\n${context}`;
     const r = await client.chat.completions.create({ model, messages: [{ role: "system", content: systemPrompt }, ...history, { role: "user", content: cleanQuestion.slice(0, 1200) }], max_tokens: 1200, temperature: 0.25, usage: { include: true } as any } as any, { timeout: 80000 });
     let rawContent = r.choices?.[0]?.message?.content; if (!rawContent?.trim()) return NextResponse.json({ error: "مدل پاسخی تولید نکرد." }, { status: 502 });
