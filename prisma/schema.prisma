@@ -206,7 +206,7 @@ model Booking {
   status        String     @default("pending")
   paymentStatus String     @default("unpaid")
   paidAt        DateTime?
-  hours         Int        @default(1)
+  hours         Float      @default(1)
   scheduledAt   DateTime?
   amount        Int
   commission    Int        @default(20)
