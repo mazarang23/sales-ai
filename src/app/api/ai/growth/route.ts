@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { computeKpis, topBy } from "@/lib/analytics/kpi";
 import { computeRfm } from "@/lib/analytics/rfm";
 import { growthPlan } from "@/lib/ai/growth-agent";
-import { getModelForPlan, getGrowthPlansLimit } from "@/lib/plans";
+import { getModelForPlan, getGrowthPlansLimit, getEffectivePlan } from "@/lib/plans";
 import { formatDate } from "@/lib/utils";
 import { recordAiUsage } from "@/lib/ai/usage";
 
@@ -21,7 +21,8 @@ export async function POST(req: NextRequest) {
     const upload = await db.upload.findFirst({ where: { id: uploadId, userId: user.id } });
     if (!upload) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
-    const growthLimit = getGrowthPlansLimit(user.plan);
+    const activePlan = getEffectivePlan(user);
+    const growthLimit = getGrowthPlansLimit(activePlan);
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     const count = await db.recommendation.count({ where: { upload: { userId: user.id }, createdAt: { gte: monthStart } } });
     if (count >= growthLimit) return NextResponse.json({ error: "LIMIT_REACHED", message: `سقف برنامه رشد پلن شما (${growthLimit} در ماه) پر شده است.` }, { status: 403 });
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
     let minDate = Infinity, maxDate = 0;
     for (const r of rows) if (r.date) { const t = new Date(r.date).getTime(); if (t < minDate) minDate = t; if (t > maxDate) maxDate = t; }
 
-    const model = getModelForPlan(user.plan);
+    const model = getModelForPlan(activePlan);
     const plan = await growthPlan({
       industry: user.industry || "خرده‌فروشی", kpis, topProducts, segments,
       dateRange: { from: minDate !== Infinity ? formatDate(new Date(minDate)) : "—", to: maxDate ? formatDate(new Date(maxDate)) : "—" }, model
