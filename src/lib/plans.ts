@@ -26,7 +26,7 @@ export const PLANS: Record<Plan, {
   business: {
     label: "حرفه‌ای", price: 4900000, maxRows: 500000, maxUploads: 999999, aiQuestions: 500, explainLimit: 100, growthPlans: 99999,
     model: "google/gemini-3.1-flash-lite", tagline: "تحلیل عمیق‌تر برای تیم‌هایی که فروش را جدی مدیریت می‌کنند.", support: "",
-    features: ["آپلود فایل تا ۵۰۰٬۰۰۰ ردیف", "همه امکانات پلن رشد", "۵۰۰ سوال از دستیار هوشمند در ماه", "مدل AI پیشرفته Gemini", "۱۰۰ توضیح بیشتر روی پیشنهاد در ماه", "برنامه رشد بدون سقف عملیاتی ماهانه", "اولویت در رزرو مشاورین"]
+    features: ["آپلود فایل تا ۵۰۰٬۰۰۰ ردیف", "همه امکانات پلن رشد", "۵۰۰ سوال از دستیار هوشمند در ماه", "مدل AI پیشرفته Gemini", "۱۰۰ توضیح بیشتر روی پیشنهاد در ماه", "تا ۹۹٬۹۹۹ برنامه رشد در ماه"]
   }
 };
 export function getPlan(userPlan: string): Plan { return userPlan === "pro" || userPlan === "business" ? userPlan : "free"; }
