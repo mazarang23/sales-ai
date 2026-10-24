@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatIRR, formatNum, formatDate } from "@/lib/utils";
+import { formatNum, formatDate } from "@/lib/utils";
 
 const PLAN_LABELS: Record<string, string> = {
   free: "رایگان",
@@ -48,7 +48,7 @@ export function PlanStatusCard({
         </Link>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl bg-slate-50 p-3">
           <div className="text-xs text-slate-500">سوالات AI باقی‌مانده</div>
           <div className="mt-1 text-lg font-bold">
