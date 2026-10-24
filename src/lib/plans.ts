@@ -30,6 +30,12 @@ export const PLANS: Record<Plan, {
   }
 };
 export function getPlan(userPlan: string): Plan { return userPlan === "pro" || userPlan === "business" ? userPlan : "free"; }
+export function getEffectivePlan(user: { plan: string; planExpiresAt?: Date | string | null }): Plan {
+  const plan = getPlan(user.plan);
+  if (plan === "free") return "free";
+  if (!user.planExpiresAt || new Date(user.planExpiresAt).getTime() <= Date.now()) return "free";
+  return plan;
+}
 export function getMaxRows(userPlan: string): number { return PLANS[getPlan(userPlan)].maxRows; }
 export function getAiQuestionsLimit(userPlan: string): number { return PLANS[getPlan(userPlan)].aiQuestions; }
 export function getExplainLimit(userPlan: string): number { return PLANS[getPlan(userPlan)].explainLimit; }
