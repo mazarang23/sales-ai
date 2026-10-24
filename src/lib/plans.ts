@@ -21,7 +21,7 @@ export const PLANS: Record<Plan, {
   pro: {
     label: "رشد", price: 890000, maxRows: 50000, maxUploads: 999999, aiQuestions: 50, explainLimit: 20, growthPlans: 20,
     model: "google/gemini-3.1-flash-lite", tagline: "برای فروشگاهی که می‌خواهد تصمیم‌ها را با داده بگیرد.", support: "",
-    features: ["آپلود فایل تا ۵۰٬۰۰۰ ردیف", "تحلیل کامل RFM و کوهورت", "۵۰ سوال از دستیار هوشمند در ماه", "۲۰ برنامه رشد در ماه", "۲۰ توضیح بیشتر روی پیشنهاد در ماه", "خروجی PDF گزارش تحلیل"]
+    features: ["آپلود فایل تا ۵۰٬۰۰۰ ردیف", "تحلیل RFM و کوهورت برای فایل‌های تا ۵۰٬۰۰۰ ردیف", "۵۰ سوال از دستیار هوشمند در ماه", "۲۰ برنامه رشد در ماه", "۲۰ توضیح بیشتر روی پیشنهاد در ماه", "خروجی PDF گزارش تحلیل"]
   },
   business: {
     label: "حرفه‌ای", price: 4900000, maxRows: 500000, maxUploads: 999999, aiQuestions: 500, explainLimit: 100, growthPlans: 99999,
