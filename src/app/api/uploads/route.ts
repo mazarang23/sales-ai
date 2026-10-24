@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { detectColumns, parseAmount, parseDate } from "@/lib/excel/detect-columns";
 import { parseAmountText } from "@/lib/excel/parse-amount-text";
 import { applyCurrency, Currency } from "@/lib/excel/currency";
-import { getMaxRows, PLANS, getPlan } from "@/lib/plans";
+import { getMaxRows, PLANS, getEffectivePlan } from "@/lib/plans";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -18,8 +18,9 @@ async function ensureDir(dir: string) { try { await fs.access(dir); } catch { aw
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-  const plan = PLANS[getPlan(user.plan)];
-  const maxRows = getMaxRows(user.plan);
+  const activePlan = getEffectivePlan(user);
+  const plan = PLANS[activePlan];
+  const maxRows = getMaxRows(activePlan);
   const planLabel = plan.label;
   const form = await req.formData();
   const file = form.get("file") as File | null;
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   const existingRowCount = appendTarget ? appendTarget.rowCount : 0;
   const totalRows = existingRowCount + json.length;
-  if (totalRows > maxRows) return NextResponse.json({ error: `تعداد ردیف‌ها (${totalRows.toLocaleString("fa-IR")}) بیشتر از سقف پلن «${planLabel}» (${maxRows.toLocaleString("fa-IR")}) است.`, code: "ROW_LIMIT", maxRows, currentPlan: user.plan }, { status: 400 });
+  if (totalRows > maxRows) return NextResponse.json({ error: `تعداد ردیف‌ها (${totalRows.toLocaleString("fa-IR")}) بیشتر از سقف پلن «${planLabel}» (${maxRows.toLocaleString("fa-IR")}) است.`, code: "ROW_LIMIT", maxRows, currentPlan: activePlan }, { status: 400 });
 
   await ensureDir(STORAGE_DIR);
   const safeName = file.name.replace(/[^\w.\-\u0600-\u06FF]/g, "_");
