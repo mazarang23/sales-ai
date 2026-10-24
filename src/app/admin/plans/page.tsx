@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { formatNum, formatDate } from "@/lib/utils";
 import { PlanToggle } from "@/components/admin/PlanToggle";
+import { PLANS, getEffectivePlan } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export default async function AdminPlansPage() {
               <th className="px-3 py-3 text-right">نام</th>
               <th className="px-3 py-3 text-right">پلن</th>
               <th className="px-3 py-3 text-right">انقضا</th>
-              <th className="px-3 py-3 text-right">سوالات AI</th>
+              <th className="px-3 py-3 text-right">سهمیه سوالات AI</th>
               <th className="px-3 py-3 text-right">عضویت</th>
               <th className="px-3 py-3 text-right">تغییر</th>
             </tr>
@@ -98,7 +99,7 @@ export default async function AdminPlansPage() {
                     )}
                   </td>
                   <td className="px-3 py-2 text-xs">
-                    {formatNum(u.aiQuestionsUsed)} / {formatNum(u.aiQuestionsLimit)}
+                    {formatNum(PLANS[getEffectivePlan(u)].aiQuestions)} در ماه
                   </td>
                   <td className="px-3 py-2 text-xs">{formatDate(u.createdAt)}</td>
                   <td className="px-3 py-2">
