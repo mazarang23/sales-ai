@@ -8,8 +8,8 @@ export const PRODUCT_BRANDS = {
     tagline: "تحلیل هوشمند فروش و فرصت‌های رشد",
     primary: "#2563eb",
     accent: "#1d4ed8",
+    soft: "#eff6ff",
     theme: "blue",
-    logoPath: "/brand/salesyar.svg",
   },
   moshaversho: {
     id: "moshaversho",
@@ -18,8 +18,8 @@ export const PRODUCT_BRANDS = {
     tagline: "فضای حرفه‌ای مشاوران و پروژه‌ها",
     primary: "#059669",
     accent: "#047857",
+    soft: "#ecfdf5",
     theme: "green",
-    logoPath: "/brand/moshaversho.svg",
   },
 } as const;
 
