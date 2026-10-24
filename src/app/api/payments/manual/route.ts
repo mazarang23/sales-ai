@@ -29,5 +29,7 @@ export async function POST(req: NextRequest) {
     }
   });
 
-  return NextResponse.redirect(new URL(`/account/payment/${subscription.id}`, req.url), 303);
+  // Use a relative Location header so reverse proxies and local bind addresses
+  // such as 0.0.0.0 never leak into the customer's payment URL.
+  return new NextResponse(null, { status: 303, headers: { Location: `/account/payment/${subscription.id}` } });
 }
