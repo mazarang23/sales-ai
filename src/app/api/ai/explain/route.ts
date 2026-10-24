@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { computeKpis } from "@/lib/analytics/kpi";
 import { explainAction } from "@/lib/ai/growth-agent";
-import { getModelForPlan, getExplainLimit } from "@/lib/plans";
+import { getModelForPlan, getExplainLimit, getEffectivePlan } from "@/lib/plans";
 import { recordAiUsage } from "@/lib/ai/usage";
 
 export const maxDuration = 90;
@@ -12,7 +12,8 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-    const explainLimit = getExplainLimit(user.plan);
+    const activePlan = getEffectivePlan(user);
+    const explainLimit = getExplainLimit(activePlan);
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     const used = await db.insight.count({ where: { kind: "explain", createdAt: { gte: monthStart }, upload: { userId: user.id } } });
     if (used >= explainLimit) return NextResponse.json({ error: "LIMIT_REACHED", message: `سقف توضیح بیشتر پلن شما (${explainLimit} در ماه) پر شده است.` }, { status: 403 });
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
 
     const rows = await db.dataRow.findMany({ where: { uploadId }, take: 500000 });
     const kpis = computeKpis(rows as any);
-    const model = getModelForPlan(user.plan);
+    const model = getModelForPlan(activePlan);
     const result = await explainAction(action, { industry: user.industry || "خرده‌فروشی", kpis, model });
     if (!result.explanation) return NextResponse.json({ error: "مدل پاسخی تولید نکرد. لطفاً دوباره تلاش کنید." }, { status: 502 });
 
