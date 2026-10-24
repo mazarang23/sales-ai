@@ -1,5 +1,6 @@
 import { Row } from "./kpi";
 import { Period, periodKey } from "./periods";
+import { normalizeCustomer } from "./customer";
 
 export type CohortRow = {
   cohortKey: string;
@@ -18,15 +19,17 @@ function addPeriod(key: string, period: Period, amount: number): string {
 
 export function computeCohort(rows: Row[], period: Period, filterProduct?: string): CohortRow[] {
   if (!Array.isArray(rows) || rows.length === 0) return [];
-  const filtered = rows.filter(r => r && r.customer && r.date && (!filterProduct || r.product === filterProduct));
+  const filtered = rows.filter(r => r && normalizeCustomer(r.customer).length > 0 && r.date && (!filterProduct || r.product === filterProduct));
   const customerPeriodRevenue = new Map<string, Map<string, number>>();
   const firstPurchase = new Map<string, string>();
+  const displayNames = new Map<string, string>();
 
   for (const r of filtered) {
     const d = new Date(r.date as string | Date);
     if (!Number.isFinite(d.getTime())) continue;
-    const customer = (r.customer as string).trim();
+    const customer = normalizeCustomer(r.customer);
     if (!customer) continue;
+    displayNames.set(customer, (r.customer as string).trim());
     const key = periodKey(d, period);
     const cp = customerPeriodRevenue.get(customer) ?? new Map<string, number>();
     const amount = typeof r.amount === "number" && Number.isFinite(r.amount) ? r.amount : 0;

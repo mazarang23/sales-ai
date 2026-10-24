@@ -48,13 +48,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const encoder = new TextEncoder();
       const startedAt = Date.now();
       let processed = 0;
-
       const send = (event: ProgressEvent) => controller.enqueue(encoder.encode(jsonEvent(event)));
 
       try {
-        if (rows.length === 0) {
-          send({ type: "progress", processed: 0, total: 0, percent: 100, elapsedMs: 0, etaMs: 0 });
-        }
+        if (rows.length === 0) send({ type: "progress", processed: 0, total: 0, percent: 100, elapsedMs: 0, etaMs: 0 });
 
         for (let i = 0; i < rows.length; i += UPDATE_CONCURRENCY) {
           const batch = rows.slice(i, i + UPDATE_CONCURRENCY);
@@ -75,18 +72,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           const elapsedMs = Date.now() - startedAt;
           const rate = processed > 0 ? processed / Math.max(elapsedMs, 1) : 0;
           const etaMs = rate > 0 ? Math.max(0, Math.round((rows.length - processed) / rate)) : null;
-          send({
-            type: "progress",
-            processed,
-            total: rows.length,
-            percent: rows.length ? Math.round((processed / rows.length) * 1000) / 10 : 100,
-            elapsedMs,
-            etaMs
-          });
+          send({ type: "progress", processed, total: rows.length, percent: rows.length ? Math.round((processed / rows.length) * 1000) / 10 : 100, elapsedMs, etaMs });
         }
 
         await db.mapping.update({ where: { uploadId: upload.id }, data: { fieldMap: fieldMap as any, mergedColumns: merges as any, headers: finalHeaders } });
-        await db.insight.deleteMany({ where: { uploadId: upload.id, kind: { in: ["cohort", "cohort_v2", "cohort_v3", "rfm_v1", "trend_v1"] } } });
+        await db.insight.deleteMany({
+          where: {
+            uploadId: upload.id,
+            kind: { in: ["dashboard_v2", "cohort", "cohort_v2", "cohort_v3", "rfm_v1", "rfm_v2", "trend_v1"] }
+          }
+        });
         send({ type: "done", updated: rows.length, headers: finalHeaders, currency });
         controller.close();
       } catch (error) {
@@ -96,12 +91,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   });
 
-  return new NextResponse(stream, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/x-ndjson; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      "X-Accel-Buffering": "no"
-    }
-  });
+  return new NextResponse(stream, { status: 200, headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" } });
 }

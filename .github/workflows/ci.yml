@@ -34,5 +34,7 @@ jobs:
         run: pnpm exec prisma generate
       - name: TypeScript check
         run: pnpm exec tsc --noEmit
+      - name: Analytics edge tests
+        run: pnpm test:analytics
       - name: Production build
         run: pnpm build

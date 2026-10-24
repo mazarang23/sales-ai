@@ -8,7 +8,14 @@ export type Row = {
 
 export function computeKpis(rows: Row[]) {
   const total = rows.reduce((s, r) => s + (r.amount ?? 0), 0);
-  const orders = new Set(rows.map(r => r.orderId).filter(Boolean)).size || rows.length;
+  const orderIds = new Set<string>();
+  let rowsWithoutOrderId = 0;
+  for (const r of rows) {
+    const orderId = typeof r.orderId === "string" ? r.orderId.trim() : "";
+    if (orderId) orderIds.add(orderId);
+    else rowsWithoutOrderId += 1;
+  }
+  const orders = orderIds.size + rowsWithoutOrderId;
   const customers = new Set(rows.map(r => r.customer).filter(Boolean)).size;
   const aov = orders ? total / orders : 0;
   return { total, orders, customers, aov };
