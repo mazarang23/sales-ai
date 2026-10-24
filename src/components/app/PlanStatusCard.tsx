@@ -11,14 +11,13 @@ export function PlanStatusCard({
   plan,
   planExpiresAt,
   aiQuestionsUsed,
-  aiQuestionsLimit,
-  walletBalance
+  aiQuestionsLimit
 }: {
   plan: string;
   planExpiresAt: Date | null;
   aiQuestionsUsed: number;
   aiQuestionsLimit: number;
-  walletBalance: number;
+  walletBalance?: number;
 }) {
   const now = new Date();
   const active = planExpiresAt && planExpiresAt > now;
@@ -58,10 +57,6 @@ export function PlanStatusCard({
         <div className="rounded-xl bg-slate-50 p-3">
           <div className="text-xs text-slate-500">سوالات مصرف‌شده</div>
           <div className="mt-1 text-lg font-bold">{formatNum(aiQuestionsUsed)}</div>
-        </div>
-        <div className="rounded-xl bg-slate-50 p-3">
-          <div className="text-xs text-slate-500">کیف پول</div>
-          <div className="mt-1 text-lg font-bold">{formatIRR(walletBalance)}</div>
         </div>
       </div>
     </div>
