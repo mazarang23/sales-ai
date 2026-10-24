@@ -18,8 +18,9 @@ async function ensureDir(dir: string) { try { await fs.access(dir); } catch { aw
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  const plan = PLANS[getPlan(user.plan)];
   const maxRows = getMaxRows(user.plan);
-  const planLabel = PLANS[getPlan(user.plan)].label;
+  const planLabel = plan.label;
   const form = await req.formData();
   const file = form.get("file") as File | null;
   const appendToUploadId = form.get("appendToUploadId") as string | null;
@@ -30,6 +31,11 @@ export async function POST(req: NextRequest) {
   if (appendToUploadId) {
     appendTarget = await db.upload.findFirst({ where: { id: appendToUploadId, userId: user.id }, include: { mappings: true } });
     if (!appendTarget) return NextResponse.json({ error: "آپلود قبلی پیدا نشد" }, { status: 404 });
+  } else {
+    const uploadCount = await db.upload.count({ where: { userId: user.id } });
+    if (uploadCount >= plan.maxUploads) {
+      return NextResponse.json({ error: "UPLOAD_LIMIT", message: `سقف فایل‌های پلن «${planLabel}» (${plan.maxUploads.toLocaleString("fa-IR")} فایل) پر شده است. برای آپلود فایل جدید، پلن خود را ارتقا دهید.`, maxUploads: plan.maxUploads }, { status: 403 });
+    }
   }
 
   const buf = Buffer.from(await file.arrayBuffer());
@@ -89,7 +95,6 @@ export async function POST(req: NextRequest) {
         }) });
       }
       await db.upload.update({ where: { id: appendTarget.id }, data: { rowCount: totalRows, fileSize: appendTarget.fileSize + buf.length, status: "READY" } });
-      // All derived results may be stale after append; clear them so the UI cannot present old analysis as current.
       await db.insight.deleteMany({ where: { uploadId: appendTarget.id } });
       await db.recommendation.deleteMany({ where: { uploadId: appendTarget.id } });
       return NextResponse.json({ uploadId: appendTarget.id, rowCount: totalRows, appendedRows: json.length, sheetCount: wb.SheetNames.length, appended: true });
