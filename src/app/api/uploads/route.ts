@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { detectColumns, parseAmount, parseDate } from "@/lib/excel/detect-columns";
 import { parseAmountText } from "@/lib/excel/parse-amount-text";
 import { applyCurrency, Currency } from "@/lib/excel/currency";
-import { getMaxRows, PLANS, getPlan } from "@/lib/plans";
+import { getMaxRows, PLANS, getEffectivePlan } from "@/lib/plans";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -18,8 +18,10 @@ async function ensureDir(dir: string) { try { await fs.access(dir); } catch { aw
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-  const maxRows = getMaxRows(user.plan);
-  const planLabel = PLANS[getPlan(user.plan)].label;
+  const activePlan = getEffectivePlan(user);
+  const plan = PLANS[activePlan];
+  const maxRows = getMaxRows(activePlan);
+  const planLabel = plan.label;
   const form = await req.formData();
   const file = form.get("file") as File | null;
   const appendToUploadId = form.get("appendToUploadId") as string | null;
@@ -30,6 +32,11 @@ export async function POST(req: NextRequest) {
   if (appendToUploadId) {
     appendTarget = await db.upload.findFirst({ where: { id: appendToUploadId, userId: user.id }, include: { mappings: true } });
     if (!appendTarget) return NextResponse.json({ error: "آپلود قبلی پیدا نشد" }, { status: 404 });
+  } else {
+    const uploadCount = await db.upload.count({ where: { userId: user.id } });
+    if (uploadCount >= plan.maxUploads) {
+      return NextResponse.json({ error: `سقف فایل‌های پلن «${planLabel}» (${plan.maxUploads.toLocaleString("fa-IR")} فایل) پر شده است. برای آپلود فایل جدید، پلن خود را ارتقا دهید.`, code: "UPLOAD_LIMIT", maxUploads: plan.maxUploads }, { status: 403 });
+    }
   }
 
   const buf = Buffer.from(await file.arrayBuffer());
@@ -57,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   const existingRowCount = appendTarget ? appendTarget.rowCount : 0;
   const totalRows = existingRowCount + json.length;
-  if (totalRows > maxRows) return NextResponse.json({ error: `تعداد ردیف‌ها (${totalRows.toLocaleString("fa-IR")}) بیشتر از سقف پلن «${planLabel}» (${maxRows.toLocaleString("fa-IR")}) است.`, code: "ROW_LIMIT", maxRows, currentPlan: user.plan }, { status: 400 });
+  if (totalRows > maxRows) return NextResponse.json({ error: `تعداد ردیف‌ها (${totalRows.toLocaleString("fa-IR")}) بیشتر از سقف پلن «${planLabel}» (${maxRows.toLocaleString("fa-IR")}) است.`, code: "ROW_LIMIT", maxRows, currentPlan: activePlan }, { status: 400 });
 
   await ensureDir(STORAGE_DIR);
   const safeName = file.name.replace(/[^\w.\-\u0600-\u06FF]/g, "_");
@@ -89,7 +96,6 @@ export async function POST(req: NextRequest) {
         }) });
       }
       await db.upload.update({ where: { id: appendTarget.id }, data: { rowCount: totalRows, fileSize: appendTarget.fileSize + buf.length, status: "READY" } });
-      // All derived results may be stale after append; clear them so the UI cannot present old analysis as current.
       await db.insight.deleteMany({ where: { uploadId: appendTarget.id } });
       await db.recommendation.deleteMany({ where: { uploadId: appendTarget.id } });
       return NextResponse.json({ uploadId: appendTarget.id, rowCount: totalRows, appendedRows: json.length, sheetCount: wb.SheetNames.length, appended: true });

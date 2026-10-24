@@ -14,6 +14,7 @@ import { FeedbackPopup } from "@/components/app/FeedbackPopup";
 import { DeleteUploadButton } from "@/components/app/DeleteUploadButton";
 import { AppNav } from "@/components/app/AppNav";
 import { getOrComputeAnalytics, ANALYTICS_VERSIONS } from "@/lib/analytics/cache";
+import { getEffectivePlan } from "@/lib/plans";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export default async function Dashboard({ params }: { params: Promise<{ id: stri
   if (!user) redirect("/login");
   const upload = await db.upload.findFirst({ where: { id, userId: user.id }, include: { mappings: true } });
   if (!upload) notFound();
+  const activePlan = getEffectivePlan(user);
 
   const currency = (((upload.mappings?.fieldMap as any)?._currency || "rial") as Currency);
   const money = (value: number | null | undefined) => formatMoney(value, currency);
@@ -53,7 +55,7 @@ export default async function Dashboard({ params }: { params: Promise<{ id: stri
     <div className="container-tight py-10 space-y-8" dir="rtl">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div><h1 className="h2">داشبورد</h1><p className="muted mt-1 text-sm">{upload.fileName} — {formatNum(upload.rowCount)} ردیف — {formatDate(upload.createdAt)}</p><p className="mt-1 text-xs text-slate-500">واحد نمایش مبالغ: {currencyLabel(currency)}</p></div>
-        <div className="flex gap-2 flex-wrap"><ReportButton uploadId={upload.id} /><DeleteUploadButton uploadId={upload.id} /><Link href="/upload" className="btn-ghost text-xs sm:text-sm">آپلود جدید</Link><Link href="/consultants" className="btn-primary text-xs sm:text-sm">رزرو مشاور</Link></div>
+        <div className="flex gap-2 flex-wrap"><ReportButton uploadId={upload.id} />{activePlan !== "free" && <Link href={`/reports/${upload.id}`} target="_blank" className="btn-ghost text-xs sm:text-sm">خروجی PDF</Link>}<DeleteUploadButton uploadId={upload.id} /><Link href="/upload" className="btn-ghost text-xs sm:text-sm">آپلود جدید</Link><Link href="/consultants" className="btn-primary text-xs sm:text-sm">رزرو مشاور</Link></div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><Kpi label="فروش کل" value={money(kpis.total)} /><Kpi label="تعداد سفارش" value={formatNum(kpis.orders)} /><Kpi label="مشتری یکتا" value={formatNum(kpis.customers)} /><Kpi label="میانگین سبد" value={money(kpis.aov)} /></div>
       <div className="card p-6"><div className="font-bold mb-4">روند فروش</div><SalesChart rows={rows.map(r => ({ date: r.date ? r.date.toISOString() : null, amount: r.amount ?? 0 }))} /></div>

@@ -4,9 +4,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { computeKpis, topBy } from "@/lib/analytics/kpi";
 import { computeRfm } from "@/lib/analytics/rfm";
 import { growthPlan } from "@/lib/ai/growth-agent";
-import { getModelForPlan, getGrowthPlansLimit } from "@/lib/plans";
+import { getModelForPlan, getGrowthPlansLimit, getEffectivePlan } from "@/lib/plans";
 import { formatDate } from "@/lib/utils";
-import { recordAiUsage, getAiWallet } from "@/lib/ai/usage";
+import { recordAiUsage } from "@/lib/ai/usage";
 
 export const maxDuration = 90;
 
@@ -21,13 +21,12 @@ export async function POST(req: NextRequest) {
     const upload = await db.upload.findFirst({ where: { id: uploadId, userId: user.id } });
     if (!upload) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
-    const growthLimit = getGrowthPlansLimit(user.plan);
+    const activePlan = getEffectivePlan(user);
+    const growthLimit = getGrowthPlansLimit(activePlan);
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     const count = await db.recommendation.count({ where: { upload: { userId: user.id }, createdAt: { gte: monthStart } } });
     if (count >= growthLimit) return NextResponse.json({ error: "LIMIT_REACHED", message: `سقف برنامه رشد پلن شما (${growthLimit} در ماه) پر شده است.` }, { status: 403 });
 
-    const wallet = await getAiWallet(user.id);
-    if (user.plan !== "free" && wallet <= 0) return NextResponse.json({ error: "AI_CREDIT_EMPTY", message: "اعتبار هوش مصنوعی حساب شما تمام شده است. لطفاً حساب را شارژ کنید." }, { status: 402 });
 
     const rows = await db.dataRow.findMany({ where: { uploadId }, take: 500000, orderBy: { date: "asc" } });
     if (!rows.length) return NextResponse.json({ error: "برای این فایل داده‌ای جهت تحلیل پیدا نشد." }, { status: 400 });
@@ -39,15 +38,14 @@ export async function POST(req: NextRequest) {
     let minDate = Infinity, maxDate = 0;
     for (const r of rows) if (r.date) { const t = new Date(r.date).getTime(); if (t < minDate) minDate = t; if (t > maxDate) maxDate = t; }
 
-    const model = getModelForPlan(user.plan);
+    const model = getModelForPlan(activePlan);
     const plan = await growthPlan({
       industry: user.industry || "خرده‌فروشی", kpis, topProducts, segments,
       dateRange: { from: minDate !== Infinity ? formatDate(new Date(minDate)) : "—", to: maxDate ? formatDate(new Date(maxDate)) : "—" }, model
     });
 
     if (plan.source === "ai") {
-      const usage = await recordAiUsage({ userId: user.id, task: "growth", model, usage: plan.usage, uploadId });
-      if (!usage.charged && usage.costToman > 0 && user.plan !== "free") return NextResponse.json({ error: "AI_CREDIT_EMPTY", message: "اعتبار هوش مصنوعی برای این تحلیل کافی نبود." }, { status: 402 });
+      const usage = await recordAiUsage({ userId: user.id, task: "growth", model, usage: plan.usage, uploadId, chargeWallet: false });
     }
 
     const rec = await db.recommendation.create({ data: { uploadId, industry: user.industry || "خرده‌فروشی", actions: plan.actions as any } });

@@ -26,7 +26,7 @@ export function UploadForm() {
       const fd = new FormData(); fd.append("file", file); if (appendMode && selectedUploadId) fd.append("appendToUploadId", selectedUploadId);
       const r = await fetch("/api/uploads", { method: "POST", body: fd }); const text = await r.text(); let j: any;
       try { j = JSON.parse(text); } catch { throw new Error("پاسخ سرور معتبر نبود."); }
-      if (!r.ok) { if (j.code === "ROW_LIMIT") { setLimitInfo({ maxRows: j.maxRows, currentPlan: j.currentPlan }); setErr(j.error); } else throw new Error(j.error || "خطا در آپلود"); setBusy(false); return; }
+      if (!r.ok) { if (j.code === "ROW_LIMIT") { setLimitInfo({ maxRows: j.maxRows, currentPlan: j.currentPlan }); setErr(j.error); } else if (j.code === "UPLOAD_LIMIT") { setLimitInfo({ maxRows: 0, currentPlan: "" }); setErr(j.error); } else throw new Error(j.error || "خطا در آپلود"); setBusy(false); return; }
       router.push(j.appended ? `/dashboard/${j.uploadId}` : `/mapping/${j.uploadId}`);
     } catch (e) { setErr(e instanceof Error ? e.message : "خطا"); setBusy(false); }
   }

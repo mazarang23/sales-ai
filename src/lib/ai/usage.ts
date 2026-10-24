@@ -102,6 +102,7 @@ export async function recordAiUsage(input: {
   usage?: any;
   costUsd?: number;
   uploadId: string;
+  chargeWallet?: boolean;
 }) {
   const promptTokens = Number(input.usage?.prompt_tokens || 0);
   const completionTokens = Number(input.usage?.completion_tokens || 0);
@@ -131,7 +132,7 @@ export async function recordAiUsage(input: {
   let chargedToman = 0;
   let charged = true;
 
-  if (costToman > 0) {
+  if (input.chargeWallet !== false && costToman > 0) {
     const result = await db.user.updateMany({
       where: { id: input.userId, walletBalance: { gte: costToman } },
       data: { walletBalance: { decrement: costToman } }

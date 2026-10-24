@@ -5,33 +5,30 @@ import Link from "next/link";
 import { formatNum, formatDate } from "@/lib/utils";
 import { AppNav } from "@/components/app/AppNav";
 import { UploadDisplayName } from "@/components/app/UploadDisplayName";
-import { getAiQuestionsLimit, getExplainLimit, getGrowthPlansLimit, getPlan, PLANS } from "@/lib/plans";
-import { getAiUsageSummary, getAiWalletPresentation } from "@/lib/ai/usage";
+import { getAiQuestionsLimit, getExplainLimit, getGrowthPlansLimit, getEffectivePlan, PLANS } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 export default async function DashboardHome() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
-  const [uploads, usage, aiWallet, explainUsed, growthUsed] = await Promise.all([
+  const activePlan = getEffectivePlan(user);
+  const [uploads, assistantUsed, explainUsed, growthUsed] = await Promise.all([
     db.upload.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 20 }),
-    getAiUsageSummary(user.id, monthStart),
-    getAiWalletPresentation(user.id),
+    db.chatMessage.count({ where: { userId: user.id, role: "user", createdAt: { gte: monthStart } } }),
     db.insight.count({ where: { kind: "explain", createdAt: { gte: monthStart }, upload: { userId: user.id } } }),
     db.recommendation.count({ where: { createdAt: { gte: monthStart }, upload: { userId: user.id } } })
   ]);
-  const plan = PLANS[getPlan(user.plan)];
-  const limits = { ai: getAiQuestionsLimit(user.plan), explain: getExplainLimit(user.plan), growth: getGrowthPlansLimit(user.plan) };
+  const plan = PLANS[activePlan];
+  const limits = { ai: getAiQuestionsLimit(activePlan), explain: getExplainLimit(activePlan), growth: getGrowthPlansLimit(activePlan) };
   return <>
     <AppNav current="dashboard" />
     <div className="container-tight py-10" dir="rtl">
       <div className="card p-5 mb-6">
-        <div className="flex items-center justify-between gap-3 flex-wrap"><div><div className="text-xs text-slate-500">پلن فعلی</div><div className="text-lg font-black">{plan.label}</div></div><div className="text-sm text-slate-600">مصرف AI این ماه: {formatNum(usage.totalTokens)} توکن</div></div>
-        <div className="grid gap-3 sm:grid-cols-3 mt-4"><Usage label="سوال از دستیار" used={user.aiQuestionsUsed} max={limits.ai} /><Usage label="برنامه رشد" used={growthUsed} max={limits.growth} /><Usage label="توضیح بیشتر" used={explainUsed} max={limits.explain} /></div>
-        {user.plan !== "free" && <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm"><div className="flex justify-between gap-3"><span>اعتبار هوش مصنوعی</span><strong>{formatNum(aiWallet.estimatedTokens)} توکن معادل</strong></div><div className="text-xs text-slate-500 mt-1">این عدد ظرفیت تقریبی باقی‌مانده است؛ هزینه هر درخواست بر اساس مصرف واقعی محاسبه می‌شود.</div></div>}
-        <div className="mt-3 flex items-center justify-between gap-3 flex-wrap"><div className="text-xs text-slate-500">{formatNum(usage.requests)} درخواست در این ماه</div><Link href="/account/phone" className="text-xs text-brand-700 underline">تغییر شماره تلفن با کد تأیید</Link></div>
+        <div className="flex items-center justify-between gap-3 flex-wrap"><div><div className="text-xs text-slate-500">پلن فعلی</div><div className="text-lg font-black">{plan.label}</div><p className="text-xs text-slate-500 mt-1">سهمیه‌ها برای هر ماه تقویمی محاسبه می‌شوند.</p></div><Link href="/account/upgrade" className="btn-ghost text-sm">{activePlan === "free" ? "ارتقای پلن" : "تمدید یا ارتقا"}</Link></div>
+        <div className="grid gap-3 sm:grid-cols-3 mt-4"><Usage label="سوال از دستیار" used={assistantUsed} max={limits.ai} /><Usage label="برنامه رشد" used={growthUsed} max={limits.growth} /><Usage label="توضیح بیشتر" used={explainUsed} max={limits.explain} /></div>
       </div>
-      {uploads.length === 0 ? <><h1 className="h2">سلام {user.name || user.phone}</h1><p className="muted mt-2">هنوز فایلی آپلود نکردی.</p><div className="mt-6 flex gap-2 flex-wrap"><Link href="/upload" className="btn-primary">آپلود فایل فروش</Link><Link href="/bookings" className="btn-ghost">جلسات من</Link></div></> : <><div className="flex items-center justify-between flex-wrap gap-3"><div><h1 className="h2">داشبورد</h1><p className="muted mt-1 text-sm">آپلودهای اخیر تو</p></div><Link href="/upload" className="btn-primary text-sm">آپلود جدید</Link></div><div className="mt-6 space-y-2">{uploads.map(u => <div key={u.id} className="card p-4 flex items-center justify-between flex-wrap gap-3"><div><UploadDisplayName id={u.id} initialName={u.displayName || u.fileName} /><div className="text-xs text-slate-500 mt-1">{formatDate(u.createdAt)} — {formatNum(u.rowCount)} ردیف</div></div><div className="flex gap-2 flex-wrap"><Link href={`/mapping/${u.id}`} className="btn-ghost text-xs">ستون‌ها</Link><Link href={`/dashboard/${u.id}`} className="btn-primary text-xs">تحلیل</Link><Link href="/consultants" className="btn-ghost text-xs text-emerald-700 border-emerald-300">رزرو مشاور</Link></div></div>)}</div></>}
+      {uploads.length === 0 ? <><h1 className="h2">سلام {user.name || user.phone}</h1><p className="muted mt-2">برای شروع، فایل فروش را آپلود کن تا شاخص‌ها و فرصت‌های رشد را ببینی.</p><div className="mt-6 flex gap-2 flex-wrap"><Link href="/upload" className="btn-primary">آپلود فایل فروش</Link><Link href="/bookings" className="btn-ghost">جلسات من</Link></div></> : <><div className="flex items-center justify-between flex-wrap gap-3"><div><h1 className="h2">فایل‌های تحلیل</h1><p className="muted mt-1 text-sm">آپلودهای اخیر تو</p></div><Link href="/upload" className="btn-primary text-sm">آپلود جدید</Link></div><div className="mt-6 space-y-2">{uploads.map(u => <div key={u.id} className="card p-4 flex items-center justify-between flex-wrap gap-3"><div><UploadDisplayName id={u.id} initialName={u.displayName || u.fileName} /><div className="text-xs text-slate-500 mt-1">{formatDate(u.createdAt)} — {formatNum(u.rowCount)} ردیف</div></div><div className="flex gap-2 flex-wrap"><Link href={`/mapping/${u.id}`} className="btn-ghost text-xs">ستون‌ها</Link><Link href={`/dashboard/${u.id}`} className="btn-primary text-xs">تحلیل</Link><Link href="/consultants" className="btn-ghost text-xs text-emerald-700 border-emerald-300">رزرو مشاور</Link></div></div>)}</div></>}
     </div>
   </>;
 }
