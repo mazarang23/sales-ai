@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatDate, formatNum, formatIRR } from "@/lib/utils";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { getEffectivePlan } from "@/lib/plans";
 import Link from "next/link";
 export const dynamic = "force-dynamic";
 const PLAN_LABELS: Record<string, string> = { free: "رایگان", pro: "رشد", business: "حرفه‌ای" };
