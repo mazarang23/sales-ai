@@ -6,7 +6,7 @@ import { computeRfm } from "@/lib/analytics/rfm";
 import { growthPlan } from "@/lib/ai/growth-agent";
 import { getModelForPlan, getGrowthPlansLimit } from "@/lib/plans";
 import { formatDate } from "@/lib/utils";
-import { recordAiUsage, getAiWallet } from "@/lib/ai/usage";
+import { recordAiUsage } from "@/lib/ai/usage";
 
 export const maxDuration = 90;
 
@@ -26,8 +26,6 @@ export async function POST(req: NextRequest) {
     const count = await db.recommendation.count({ where: { upload: { userId: user.id }, createdAt: { gte: monthStart } } });
     if (count >= growthLimit) return NextResponse.json({ error: "LIMIT_REACHED", message: `سقف برنامه رشد پلن شما (${growthLimit} در ماه) پر شده است.` }, { status: 403 });
 
-    const wallet = await getAiWallet(user.id);
-    if (user.plan !== "free" && wallet <= 0) return NextResponse.json({ error: "AI_CREDIT_EMPTY", message: "اعتبار هوش مصنوعی حساب شما تمام شده است. لطفاً حساب را شارژ کنید." }, { status: 402 });
 
     const rows = await db.dataRow.findMany({ where: { uploadId }, take: 500000, orderBy: { date: "asc" } });
     if (!rows.length) return NextResponse.json({ error: "برای این فایل داده‌ای جهت تحلیل پیدا نشد." }, { status: 400 });
@@ -46,8 +44,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (plan.source === "ai") {
-      const usage = await recordAiUsage({ userId: user.id, task: "growth", model, usage: plan.usage, uploadId });
-      if (!usage.charged && usage.costToman > 0 && user.plan !== "free") return NextResponse.json({ error: "AI_CREDIT_EMPTY", message: "اعتبار هوش مصنوعی برای این تحلیل کافی نبود." }, { status: 402 });
+      const usage = await recordAiUsage({ userId: user.id, task: "growth", model, usage: plan.usage, uploadId, chargeWallet: false });
     }
 
     const rec = await db.recommendation.create({ data: { uploadId, industry: user.industry || "خرده‌فروشی", actions: plan.actions as any } });
